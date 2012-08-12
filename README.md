@@ -11,11 +11,17 @@ Add this line to your application's Gemfile:
 
 And then execute:
 
-    $ bundle
+    bundle
 
 Or install it yourself as:
 
-    $ gem install mongo_percolator
+    gem install mongo_percolator
+
+## Tests
+
+I use `rspec` for unit tests. These can be run in the usual way:
+
+    rspec spec
 
 ## Contributing
 
