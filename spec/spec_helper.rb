@@ -5,9 +5,9 @@
 #
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 RSpec.configure do |config|
-#  config.treat_symbols_as_metadata_keys_with_true_values = true
-#  config.run_all_when_everything_filtered = true
-#  config.filter_run :focus
+  config.treat_symbols_as_metadata_keys_with_true_values = true
+  config.run_all_when_everything_filtered = true
+  config.filter_run :focus
 
   # Run specs in random order to surface order dependencies. If you find an
   # order dependency and want to debug it, you can fix the order by providing
@@ -16,5 +16,26 @@ RSpec.configure do |config|
   config.order = 'random'
 end
 
+def connect_test_db
+  options = {}
+  options[:safe] ||= {:w => 1}
+  MongoMapper.connection = Mongo::Connection.new("localhost", nil, options)
+  MongoMapper.database = "mongo_percolator_test"
+  raise RuntimeError, "Failed to connect to MongoDB" if MongoMapper.connection.nil?
+end
+
+# A convenience function for keeping the database clean. This can be run in a 
+# before(:each) handler of integration tests that change the database state.
+def clean_db
+  db = MongoMapper.database
+  collections = db.collection_names - ["system.indexes"]
+  collections.each{|c| db[c].drop }
+end
+
 require 'bundler/setup'
 require 'mongo_percolator'
+require 'pry'
+
+# Connect our test database
+connect_test_db
+clean_db
