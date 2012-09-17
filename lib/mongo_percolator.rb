@@ -7,4 +7,6 @@ module MongoPercolator
   end
 end
 
+require 'mongo_percolator/addressable'
+require 'mongo_percolator/node'
 require 'mongo_percolator/operation_definition'
