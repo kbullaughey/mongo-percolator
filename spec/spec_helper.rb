@@ -16,14 +16,6 @@ RSpec.configure do |config|
   config.order = 'random'
 end
 
-def connect_test_db
-  options = {}
-  options[:safe] ||= {:w => 1}
-  MongoMapper.connection = Mongo::Connection.new("localhost", nil, options)
-  MongoMapper.database = "mongo_percolator_test"
-  raise RuntimeError, "Failed to connect to MongoDB" if MongoMapper.connection.nil?
-end
-
 # A convenience function for keeping the database clean. This can be run in a 
 # before(:each) handler of integration tests that change the database state.
 def clean_db
@@ -37,5 +29,5 @@ require 'mongo_percolator'
 require 'pry'
 
 # Connect our test database
-connect_test_db
+MongoPercolator.connect
 clean_db
