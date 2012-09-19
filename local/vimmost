@@ -1,0 +1,3 @@
+#!/bin/bash
+
+vim `(find lib -type f; find spec -type f; echo Gemfile)`
