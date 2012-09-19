@@ -6,16 +6,15 @@ module MongoPercolator
       # Operations are a one-to-one mapping
       def operation(klass)
         # Declare the first direction of the association
-        belongs_to klass.to_s.underscore
-
-        # We shouldn't ever declare an operation twice.
-        class_name = self.to_s.underscore.to_sym
-        raise NameError, "name collision" if klass.respond_to? class_name
+        belongs_to klass.to_s.underscore.to_sym
 
         # Declare the other direction of the association
-        klass.instance_eval do
-          one class_name
-        end
+        class_name = self.to_s.underscore.to_sym
+        klass.attach class_name
+
+        # Invoke the blocks accompanying computed properties. I execute the
+        # block in our own context using instance_eval.
+        klass.computed_properties.values.each { |block| instance_eval &block }
       end
     end
     
