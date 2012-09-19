@@ -33,4 +33,4 @@ I use `rspec` for unit tests. These can be run in the usual way:
 
 ## Copyright
 
-See LICENSE for details
+See LICENSE for details.
