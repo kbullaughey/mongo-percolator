@@ -6,7 +6,7 @@ describe "MongoPercolator::OperationDefinition unit" do
     class NoOp < MongoPercolator::OperationDefinition
     end
 
-    class Animals
+    class AnimalsUnit
       def wild
         ["sloth", "binturong"]
       end
@@ -19,7 +19,7 @@ describe "MongoPercolator::OperationDefinition unit" do
     class RealOp < MongoPercolator::OperationDefinition
       def emit(inputs)
       end
-      key :animals, Animals
+      key :animals, AnimalsUnit
       computes(:pets) { key :pets, Array }
       depends_on 'animals.farm'
       depends_on 'animals.wild'
@@ -45,7 +45,7 @@ describe "MongoPercolator::OperationDefinition unit" do
     end
 
     it "can gather the data for the operation" do
-      node = double(:animals => Animals.new)
+      node = double(:animals => AnimalsUnit.new)
       data = RealOp.new.gather node
       data.should be_kind_of(Hash)
       data['animals.farm'].should == ["pig"]

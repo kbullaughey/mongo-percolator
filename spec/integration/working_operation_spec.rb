@@ -3,8 +3,8 @@ require 'spec_helper'
 describe "MongoPercolator Node & Operation integration" do
   before :all do
     # This will serve as the parent class
-    class Animals
-      include MongoPercolator::Document
+    class AnimalsIntegration
+      include MongoPercolator::Node
       key :wild, Array
       key :farm, Array
       key :imaginary, Array
@@ -14,7 +14,7 @@ describe "MongoPercolator Node & Operation integration" do
     class RealOp < MongoPercolator::OperationDefinition
       def emit(inputs)
       end
-      parent :animals
+      parent :animals, :class => AnimalsIntegration
       computes(:pets) { key :pets, Array }
       depends_on 'animals.farm'
       depends_on 'animals.wild'
@@ -29,17 +29,17 @@ describe "MongoPercolator Node & Operation integration" do
 
   describe "RealOp" do
     before :each do
-      Animals.remove
+      AnimalsIntegration.remove
       MongoPercolator::OperationDefinition.remove
       SomeNode.remove
-      @animals = Animals.new
+      @animals = AnimalsIntegration.new
       @op = RealOp.new
     end
 
     it "persists the parent on assignment" do
       @op.animals = @animals
       @animals.persisted?.should be_true
-      Animals.where(:id => @animals.id).count.should == 1
+      AnimalsIntegration.where(:id => @animals.id).count.should == 1
     end
 
     it "can access the parent using the reader" do
@@ -62,16 +62,15 @@ describe "MongoPercolator Node & Operation integration" do
     it "cannot be added to another class" do
       expect {
         class SomeOtherNode
-          include MongoMapper::Document
           include MongoPercolator::Node
           operation RealOp
         end
       }.to raise_error(MongoPercolator::Collision)
     end
 
-    context "populated Animals" do
+    context "populated AnimalsIntegration" do
       before :each do
-        @animals = Animals.new :wild => %w(sloth binturong)
+        @animals = AnimalsIntegration.new :wild => %w(sloth binturong)
         @animals.save!
         @op.animals = @animals
       end
@@ -93,7 +92,7 @@ describe "MongoPercolator Node & Operation integration" do
   describe "SomeNode" do
     before :each do
       @node = SomeNode.new
-      @op = RealOp.new :animals => Animals.new
+      @op = RealOp.new :animals => AnimalsIntegration.new
     end
 
     it "has a belongs_to association" do
