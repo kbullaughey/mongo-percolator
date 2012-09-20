@@ -36,9 +36,11 @@ module MongoPercolator
 
     # Return a proc that can be used to match head on the front of a address.
     #
-    # @param h [String] First property in the address.
+    # @param h [String|Symbol] First property in the address.
     # @return [Proc] Proc that can be used to match an address against the head
     def self.match_head(h)
+      h = h.to_s if h.kind_of? Symbol
+      raise ArgumentError, "expecting string or symbol" unless h.kind_of? String
       Proc.new {|addr| head(addr) == h }
     end
 

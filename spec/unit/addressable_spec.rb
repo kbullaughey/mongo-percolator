@@ -91,6 +91,17 @@ describe "MongoPercolator::Addressable unit" do
       matching = @addrs.select &Layer1.new.match_head('fish')
       matching.should == ['fish.red_snapper', 'fish.bass']
     end
+
+    it "can take a symbol" do
+      matching = @addrs.select &Layer1.new.match_head(:fish)
+      matching.should == ['fish.red_snapper', 'fish.bass']
+    end
+
+    it "raises an error if not a string or symbol" do
+      expect {
+        @addrs.select &Layer1.new.match_head(1)
+      }.to raise_error(ArgumentError, /string or symbol/)
+    end
   end
 
   it "can get the head of an address using an instance" do
