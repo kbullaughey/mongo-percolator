@@ -2,6 +2,8 @@ require 'active_support/core_ext/string/inflections'
 
 module MongoPercolator
   module Node
+    include MongoPercolator::Addressable
+
     module ClassMethods
       # Operations are a one-to-one mapping
       def operation(klass)
@@ -19,6 +21,10 @@ module MongoPercolator
     end
     
     def self.included(mod)
+      # For some reason I can't simply include MongoMapper::Document. I need to
+      # defer it until MongoPercolator::Document itself is included because I
+      # think MongoMapper::Document assumes that it's getting included into a 
+      # class and not another module.
       mod.instance_eval { include MongoMapper::Document }
       mod.extend ClassMethods
     end

@@ -30,7 +30,6 @@ end
 
 require 'mongo_percolator/addressable'
 require 'mongo_percolator/addressable/diff'
-require 'mongo_percolator/document'
 require 'mongo_percolator/exceptions'
 require 'mongo_percolator/node'
 require 'mongo_percolator/operation_definition'
