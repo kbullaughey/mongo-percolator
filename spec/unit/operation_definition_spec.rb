@@ -30,6 +30,13 @@ describe "MongoPercolator::OperationDefinition unit" do
     it "shouldn't have any computed properties" do
       NoOp.computed_properties.should == {}
     end
+
+    it "propagation fails when given a non-parent" do
+      non_parent = double(:id => 'xyz')
+      expect {
+        NoOp.new.propagate non_parent
+      }.to raise_error(ArgumentError)
+    end
   end
 
   describe "RealOp" do

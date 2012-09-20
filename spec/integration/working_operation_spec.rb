@@ -4,13 +4,10 @@ describe "MongoPercolator Node & Operation integration" do
   before :all do
     # This will serve as the parent class
     class Animals
-      include MongoMapper::Document
-      def wild
-        ["sloth", "binturong"]
-      end
-      def farm
-        ["pig"]
-      end
+      include MongoPercolator::Document
+      key :wild, Array
+      key :farm, Array
+      key :imaginary, Array
     end
 
     # Set up an operation class with a few computed properties
@@ -68,6 +65,26 @@ describe "MongoPercolator Node & Operation integration" do
           operation RealOp
         end
       }.to raise_error(MongoPercolator::Collision)
+    end
+
+    context "populated Animals" do
+      before :each do
+        @animals = Animals.new :wild => %w(sloth binturong)
+        @animals.save!
+        @op.animals = @animals
+      end
+
+      it "knows which dependencies have changed (1)" do
+        @animals.wild << 'meerkat'
+        @op.relevant_changes_for(@animals).should == ['animals.wild']
+      end
+  
+      it "knows which dependencies have changed (2)" do
+        @animals.wild << 'meerkat'
+        @animals.farm = ['pig']
+        @op.relevant_changes_for(@animals).sort.should == 
+          %w(animals.farm animals.wild)
+      end
     end
   end
 
