@@ -22,7 +22,6 @@ describe "MongoPercolator Node & Operation integration" do
 
     # Set up a node class
     class SomeNode
-      include MongoMapper::Document
       include MongoPercolator::Node
       operation RealOp
     end
@@ -30,6 +29,9 @@ describe "MongoPercolator Node & Operation integration" do
 
   describe "RealOp" do
     before :each do
+      Animals.remove
+      MongoPercolator::OperationDefinition.remove
+      SomeNode.remove
       @animals = Animals.new
       @op = RealOp.new
     end
@@ -108,4 +110,8 @@ describe "MongoPercolator Node & Operation integration" do
       @node.should respond_to(:pets)
     end
   end
+
+  pending "check that multiple parents of same class work (#{__FILE__})"
+  pending "check parents can be out of order when using :position (#{__FILE__})"
+  pending "check that parents can have gaps when using :position (#{__FILE__})"
 end

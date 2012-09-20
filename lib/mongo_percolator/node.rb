@@ -19,6 +19,7 @@ module MongoPercolator
     end
     
     def self.included(mod)
+      mod.instance_eval { include MongoMapper::Document }
       mod.extend ClassMethods
     end
   end
