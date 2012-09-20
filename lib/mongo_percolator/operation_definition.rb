@@ -126,7 +126,7 @@ module MongoPercolator
     # properties depend are set and available on the instance.
     # @return [Hash] data passed to emit
     def gather(root)
-      Hash[self.class.dependencies.collect { |dep| [dep, fetch(dep, root)] }]
+      Hash[self.class.dependencies.collect { |dep| [dep, fetch(dep, :target => root)] }]
     end
   private
     def ivar(name)

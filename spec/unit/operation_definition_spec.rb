@@ -28,13 +28,13 @@ describe "MongoPercolator::OperationDefinition unit" do
 
   describe "NoOp" do
     it "shouldn't have any computed properties" do
-      NoOp.computed_properties.should == []
+      NoOp.computed_properties.should == {}
     end
   end
 
   describe "RealOp" do
     it "should have pets as a computed property" do
-      RealOp.computed_properties.should include('pets')
+      RealOp.computed_properties.should include(:pets)
     end
 
     it "can gather the data for the operation" do
