@@ -8,7 +8,7 @@ module MongoPercolator
       # Operations are a one-to-one mapping
       def operation(klass)
         # Declare the first direction of the association
-        belongs_to klass.to_s.underscore.to_sym
+        one klass.to_s.underscore.to_sym, :foreign_key => :node_id
 
         # Declare the other direction of the association
         klass.attach self
@@ -42,13 +42,22 @@ module MongoPercolator
     #-----------------
 
     # Check to see if any other nodes depend on this one and if so, cause them 
-    # to update. This is usually invoked as a before_save callback.
+    # to update. This is usually invoked as a before_save callback. Currently, 
+    # it's only when a parent is saved that downstream computed properties will
+    # get updated.
     def propagate
       # If not saved, then we can't have anything else that depends on us.
       return true if not persisted?
 
-      MongoPercolator::Operation.where(:parent_ids => id).find_each do |parent|
+      MongoPercolator::Operation.where(:parent_ids => id).find_each do |op|
+        # If we (the parent) have changed in ways that are meaningful to this
+        # operation, then we cause the relevant computed properties to be 
+        # recomputed. 
+        dependencies = op.relevant_changes_for self
+        op._old = true unless dependencies.empty?
+        op.save!
       end
+      return true
     end
   end
 end

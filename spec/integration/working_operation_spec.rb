@@ -13,6 +13,7 @@ describe "MongoPercolator Node & Operation integration" do
     # Set up an operation class with a few computed properties
     class RealOp < MongoPercolator::Operation
       def emit(inputs)
+        {:pets => (inputs['animals.farm'] + inputs['animals.wild']).sort}
       end
       parent :animals, :class => AnimalsIntegration
       computes(:pets) { key :pets, Array }
@@ -96,21 +97,48 @@ describe "MongoPercolator Node & Operation integration" do
   describe "SomeNode" do
     before :each do
       @node = SomeNode.new
-      @op = RealOp.new :animals => AnimalsIntegration.new
+      @animals = AnimalsIntegration.new :wild => %w(sloth binturong dugong)
+      @op = RealOp.new :animals => @animals
     end
 
-    it "has a belongs_to association" do
+    it "has an operation association" do
       @node.should respond_to(:real_op)
-      @node.should respond_to(:real_op_id)
     end
     
-    it "has a real op associated" do
-      @node.real_op = @op
-      @node.real_op.should be_kind_of(RealOp)
-    end
-
     it "has the keys associated with computed properties" do
       @node.should respond_to(:pets)
+    end
+
+    context "has an op associated" do
+      before :each do
+        @node.real_op = @op
+      end
+
+      it "has a real op associated" do
+        @node.real_op.should be_kind_of(RealOp)
+      end
+
+      it "can find the node from the real op" do
+        @op.node.should be_kind_of(SomeNode)
+      end
+  
+      it "can computed computed properties on demand" do
+        @node.pets.should == []
+        @op.recompute!
+        @node.reload
+        @node.pets.should == %w(binturong dugong sloth)
+      end
+  
+      it "gets an updated computed property when the parent is changed" do
+        @op.recompute!
+        @node.reload
+        @animals.farm = ['hog']
+        @animals.save
+        MongoPercolator::Operation.where(:_old => true).count.should == 1
+        MongoPercolator.percolate
+        @node.reload
+        @node.pets.should == %w(binturong dugong hog sloth)
+      end
     end
   end
 

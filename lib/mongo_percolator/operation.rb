@@ -8,6 +8,7 @@ module MongoPercolator
     include Addressable
 
     key :parent_ids, Array, :typecast => 'BSON::ObjectId'
+    key :_old, Boolean, :default => false
 
     # These domain-specific langauge methods are to be used in specifying the 
     # operation definition that inherits from this class.
@@ -16,9 +17,13 @@ module MongoPercolator
       # by the same name using any of the standard MongoMapper means, such as key,
       # one, many, etc. The block is executed in the context of the node that the
       # operation part of.
+      #
+      # @param property [Symbol] Name of computed property
+      # @param &body [Block] A block defining the key or association for the 
+      #   computed property
       def computes(property, &body)
         @computed_properties ||= {}
-        @computed_properties[property] = body
+        @computed_properties[property.to_sym] = body
       end
 
       # Adds a dependency
@@ -100,16 +105,24 @@ module MongoPercolator
         @parents
       end
 
+      # Indicate whether the property is a computed property.
+      #
+      # @param property [Symbol] Name of property.
+      def computed_property?(property)
+        computed_properties.include? property.to_sym
+      end
+
       # This is called when the operation is declared on a node. It performs
       # some additional setup.
       def finalize
         unless @finalized
+          raise NotImplementedError, "Need emit" unless instance_methods.include? :emit
           parents.freeze
           @finalized = true
         end
       end
 
-      # Set up the forward direction of the association. Since each operation 
+      # Set up the belongs_to direction of the association. Since each operation 
       # can only belong to one node, we can always use the reader :node so that
       # regardless of the class, we can find the node.
       #
@@ -117,7 +130,7 @@ module MongoPercolator
       def attach(klass)
         raise Collision, "Operation already attached" if @attached
         @attached = true
-        one :node, :class => klass
+        belongs_to :node, :class => klass
       end
     end
 
@@ -140,33 +153,39 @@ module MongoPercolator
       self.class.dependencies
     end
 
-    # If the parent has changed in ways that are meaningful to this operation,
-    # then we cause the relevant computed properties to be recomputed. This 
-    # function is called when the parent is saved. Currently, it's only when
-    # a parent is saved that downstream computed properties will get updated.
-    #
-    # @param parent [Object] Parent instance that has changed. 
-    # @param options [Hash] Optional options hash:
-    #   :async [Boolean] Whether the update should be asynchronous (default=true)
-    def propagate(parent, options={})
-      # Get the subset of dependencies that correspond to this parent label.
-      deps_to_recompute = relevant_changes_for parent
-
-      # TODO: Determine if anything along the paths has changed. If so, propagate the update.
+    # Recompute the computed properties.
+    def recompute!
+      raise KeyError, "node is nil" if node.nil?
+      # Get the new values for the computed properties, and plug them into 
+      # the node
+      emit(gather).each do |key,val|
+        raise NameError, "not a computed property" unless computed_property? key
+        node[key] = val
+      end
+      node.save!
     end
 
     # Collect all the data required to perform the operation. This instance
     # method requires that all the parent associations on which computed 
     # properties depend are set and available on the instance.
+    #
     # @return [Hash] data passed to emit
-    def gather(root)
-      Hash[dependencies.collect { |dep| [dep, fetch(dep, :target => root)] }]
+    def gather
+      Hash[dependencies.collect { |dep| [dep, fetch(dep)] }]
     end
 
     # Indicate whether the object is a parent of this operation.
+    #
+    # @return [Boolean]
     def parent?(object)
       parent_ids.include? object.id
     end
+
+    # Instance verion of Operation.computed property
+    def computed_property?(property)
+      self.class.computed_property? property
+    end
+
   private
     def ivar(name)
       "@#{name}".to_sym
