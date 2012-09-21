@@ -1,9 +1,9 @@
 require 'spec_helper'
 
-describe "MongoPercolator::OperationDefinition unit" do
+describe "MongoPercolator::Operation unit" do
   before :all do
     # Set up a derived class with no computed properties
-    class NoOp < MongoPercolator::OperationDefinition
+    class NoOp < MongoPercolator::Operation
     end
 
     class AnimalsUnit
@@ -16,7 +16,7 @@ describe "MongoPercolator::OperationDefinition unit" do
     end
 
     # Set up a derived class with a few computed properties
-    class RealOp < MongoPercolator::OperationDefinition
+    class RealOp < MongoPercolator::Operation
       def emit(inputs)
       end
       key :animals, AnimalsUnit

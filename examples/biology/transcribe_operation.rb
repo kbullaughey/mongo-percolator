@@ -1,4 +1,4 @@
-class TranscribeOperation < MongoPercolator::OperationDefinition
+class TranscribeOperation < MongoPercolator::Operation
   # Transcription depends on the gene
   def emit(gene)
     raise ArgumentError, "expecting gene" unless gene.kind_of? Gene

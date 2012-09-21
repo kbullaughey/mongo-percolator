@@ -11,7 +11,7 @@ describe "MongoPercolator Node & Operation integration" do
     end
 
     # Set up an operation class with a few computed properties
-    class RealOp < MongoPercolator::OperationDefinition
+    class RealOp < MongoPercolator::Operation
       def emit(inputs)
       end
       parent :animals, :class => AnimalsIntegration
@@ -30,7 +30,7 @@ describe "MongoPercolator Node & Operation integration" do
   describe "RealOp" do
     before :each do
       AnimalsIntegration.remove
-      MongoPercolator::OperationDefinition.remove
+      MongoPercolator::Operation.remove
       SomeNode.remove
       @animals = AnimalsIntegration.new
       @op = RealOp.new
@@ -56,7 +56,7 @@ describe "MongoPercolator Node & Operation integration" do
     end
 
     it "has a one association" do
-      @op.should respond_to(:some_node)
+      @op.should respond_to(:node)
     end
 
     it "has the correct count of parents" do

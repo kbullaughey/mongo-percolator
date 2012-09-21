@@ -3,7 +3,7 @@ module MongoPercolator
   # Abstract operation class from which operations inherit.
   # 
   # Each operation should have an emit function
-  class OperationDefinition
+  class Operation
     include MongoMapper::Document
     include Addressable
 
@@ -109,11 +109,15 @@ module MongoPercolator
         end
       end
 
-      # Set up the forward direction of the association
-      def attach(class_name)
-        raise Collision, "OperationDefinition already attached" if @attached
+      # Set up the forward direction of the association. Since each operation 
+      # can only belong to one node, we can always use the reader :node so that
+      # regardless of the class, we can find the node.
+      #
+      # @param klass [Class] The class of the node.
+      def attach(klass)
+        raise Collision, "Operation already attached" if @attached
         @attached = true
-        one class_name
+        one :node, :class => klass
       end
     end
 
@@ -142,7 +146,9 @@ module MongoPercolator
     # a parent is saved that downstream computed properties will get updated.
     #
     # @param parent [Object] Parent instance that has changed. 
-    def propagate(parent)
+    # @param options [Hash] Optional options hash:
+    #   :async [Boolean] Whether the update should be asynchronous (default=true)
+    def propagate(parent, options={})
       # Get the subset of dependencies that correspond to this parent label.
       deps_to_recompute = relevant_changes_for parent
 
