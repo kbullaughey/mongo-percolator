@@ -26,6 +26,15 @@ module MongoPercolator
     end
     x
   end
+
+  # Recompute everything
+  def self.percolate(passes = 1)
+    passes.times do
+      Operation.where(:_old => true).find_each do |op|
+        op.recompute!
+      end
+    end
+  end
 end
 
 require 'mongo_percolator/addressable'
