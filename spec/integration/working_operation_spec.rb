@@ -36,6 +36,10 @@ describe "MongoPercolator Node & Operation integration" do
       @op = RealOp.new
     end
 
+    it "is frozen" do
+      RealOp.parents.frozen?.should be_true
+    end
+
     it "persists the parent on assignment" do
       @op.animals = @animals
       @animals.persisted?.should be_true

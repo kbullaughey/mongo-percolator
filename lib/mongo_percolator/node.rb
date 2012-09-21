@@ -17,6 +17,8 @@ module MongoPercolator
         # Invoke the blocks accompanying computed properties. I execute the
         # block in our own context using instance_eval.
         klass.computed_properties.values.each { |block| instance_eval &block }
+
+        klass.finalize
       end
     end
     

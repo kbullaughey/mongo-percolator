@@ -103,7 +103,10 @@ module MongoPercolator
       # This is called when the operation is declared on a node. It performs
       # some additional setup.
       def finalize
-        parents.freeze
+        unless @finalized
+          parents.freeze
+          @finalized = true
+        end
       end
 
       # Set up the forward direction of the association
