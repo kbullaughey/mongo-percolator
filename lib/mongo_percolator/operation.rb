@@ -13,6 +13,15 @@ module MongoPercolator
     # These domain-specific langauge methods are to be used in specifying the 
     # operation definition that inherits from this class.
     module DSL
+      # Provide a block that will do the recomputation. This block will be 
+      # executed in the context of the node, and thus have access to member 
+      # functions and variables.
+      def emit &block
+        raise ArgumentError, "Emit block takes no args" unless block.arity == 0
+        raise Collision, "emit already called" unless @emit.nil?
+        @emit = block
+      end
+
       # Adds a computed property. It takes a block, which should define a property
       # by the same name using any of the standard MongoMapper means, such as key,
       # one, many, etc. The block is executed in the context of the node that the
@@ -111,6 +120,11 @@ module MongoPercolator
         @parents
       end
 
+      # Return the emit block
+      def emit_block
+        @emit
+      end
+
       # Indicate whether the property is a computed property.
       #
       # @param property [Symbol] Name of property.
@@ -122,7 +136,7 @@ module MongoPercolator
       # some additional setup.
       def finalize
         unless @finalized
-          raise NotImplementedError, "Need emit" unless instance_methods.include? :emit
+          raise NotImplementedError, "Need emit" if @emit.nil?
           parents.freeze
           @finalized = true
         end
@@ -162,13 +176,24 @@ module MongoPercolator
     # Recompute the computed properties.
     def recompute!
       raise KeyError, "node is nil" if node.nil?
-      # Get the new values for the computed properties, and plug them into 
-      # the node
-      emit(gather).each do |key,val|
-        raise NameError, "not a computed property" unless computed_property? key
-        node[key] = val
+
+      # Special variable used inside the block
+      gathered_inputs = gather
+
+      # Since I need access to the inputs from inside the emit block, I add
+      # a singleton method to get them.
+      node.define_singleton_method :inputs do
+        gathered_inputs
       end
+
+      # Execute the emit block in the context of the node, and save it.
+      node.instance_eval &emit_block
       node.save!
+    end
+
+    # Get the emit block from the class variable
+    def emit_block
+      self.class.emit_block
     end
 
     # Collect all the data required to perform the operation. This instance

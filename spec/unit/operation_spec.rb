@@ -17,8 +17,7 @@ describe "MongoPercolator::Operation unit" do
 
     # Set up a derived class with a few computed properties
     class RealOpUnit < MongoPercolator::Operation
-      def emit(inputs)
-      end
+      emit {}
       key :animals, AnimalsUnit
       computes(:pets) { key :pets, Array }
       depends_on 'animals.farm'
@@ -31,7 +30,7 @@ describe "MongoPercolator::Operation unit" do
       NoOp.computed_properties.should == {}
     end
 
-    it "finalize fails without emit function" do
+    it "finalize fails without emit block" do
       expect {
         NoOp.finalize
       }.to raise_error(NotImplementedError, /emit/)
