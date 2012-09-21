@@ -17,6 +17,7 @@ describe "MongoPercolator Node & Operation integration" do
       end
       parent :animals, :class => AnimalsIntegration
       computes(:pets) { key :pets, Array }
+      computes(:address)
       depends_on 'animals.farm'
       depends_on 'animals.wild'
     end
@@ -54,6 +55,11 @@ describe "MongoPercolator Node & Operation integration" do
 
     it "knows about its computed property" do
       RealOp.computed_properties.should include(:pets)
+    end
+
+    it "knows a computed property lacks a block" do
+      RealOp.computed_properties.should include(:address)
+      RealOp.computed_properties[:address].should be_nil
     end
 
     it "has a one association" do
@@ -145,4 +151,5 @@ describe "MongoPercolator Node & Operation integration" do
   pending "check that multiple parents of same class work (#{__FILE__})"
   pending "check parents can be out of order when using :position (#{__FILE__})"
   pending "check that parents can have gaps when using :position (#{__FILE__})"
+  pending "check that computes can compute vaious associations (#{__FILE__})"
 end

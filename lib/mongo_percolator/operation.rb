@@ -18,9 +18,15 @@ module MongoPercolator
       # one, many, etc. The block is executed in the context of the node that the
       # operation part of.
       #
+      # A block is not required. For example, if one wants to define the keys in
+      # A parent class from which nodes with differing operations descend, this
+      # can be done in the parent class and then a block is not needed. However,
+      # be sure that the property passed to computes() matches the name of the
+      # key or association.
+      #
       # @param property [Symbol] Name of computed property
       # @param &body [Block] A block defining the key or association for the 
-      #   computed property
+      #   computed property (optional)
       def computes(property, &body)
         @computed_properties ||= {}
         @computed_properties[property.to_sym] = body
