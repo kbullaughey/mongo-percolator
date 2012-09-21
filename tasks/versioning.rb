@@ -33,6 +33,11 @@ def commit_version(v)
   sh "git commit -m 'Bumping version to #{v}' lib/mongo_percolator/version.rb"
 end
 
+desc "Show version"
+task :version do
+  puts MongoPercolator::VERSION
+end
+
 namespace :version do
   desc "Shorthand for version:bump:patch"
   task :bump => ['version:bump:patch']
