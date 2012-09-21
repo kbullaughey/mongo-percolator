@@ -16,7 +16,7 @@ describe "MongoPercolator::Operation unit" do
     end
 
     # Set up a derived class with a few computed properties
-    class RealOp < MongoPercolator::Operation
+    class RealOpUnit < MongoPercolator::Operation
       def emit(inputs)
       end
       key :animals, AnimalsUnit
@@ -31,22 +31,25 @@ describe "MongoPercolator::Operation unit" do
       NoOp.computed_properties.should == {}
     end
 
-    it "propagation fails when given a non-parent" do
-      non_parent = double(:id => 'xyz')
+    it "finalize fails without emit function" do
       expect {
-        NoOp.new.propagate non_parent
-      }.to raise_error(ArgumentError)
+        NoOp.finalize
+      }.to raise_error(NotImplementedError, /emit/)
     end
   end
 
-  describe "RealOp" do
+  describe "RealOpUnit" do
+    it "can be finalized" do
+      expect { RealOpUnit.finalize }.to_not raise_error
+    end
+
     it "should have pets as a computed property" do
-      RealOp.computed_properties.should include(:pets)
+      RealOpUnit.computed_properties.should include(:pets)
     end
 
     it "can gather the data for the operation" do
-      node = double(:animals => AnimalsUnit.new)
-      data = RealOp.new.gather node
+      op = RealOpUnit.new :animals => AnimalsUnit.new
+      data = op.gather
       data.should be_kind_of(Hash)
       data['animals.farm'].should == ["pig"]
       data['animals.wild'].should == ["sloth", "binturong"]
