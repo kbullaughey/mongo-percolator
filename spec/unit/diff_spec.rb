@@ -2,6 +2,8 @@ require 'spec_helper'
 
 describe MongoPercolator::Addressable::Diff do
   before :all do
+    ::MP = MongoPercolator unless Object.const_defined? :MP
+
     class Queen
       include MongoMapper::EmbeddedDocument
       key :weight, String
@@ -12,9 +14,8 @@ describe MongoPercolator::Addressable::Diff do
       one :queen
       key :bee_census, Integer
     end
-
-    MP = MongoPercolator
   end
+
   before :each do
     Hive.remove
     @hive = Hive.new :bee_census => 1_000_000

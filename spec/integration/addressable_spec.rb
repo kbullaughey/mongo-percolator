@@ -2,7 +2,7 @@ require 'spec_helper'
 
 describe "MongoPercolator::Addressable integration" do
   before :all do
-    MP = MongoPercolator
+    ::MP = MongoPercolator unless Object.const_defined? :MP
     class Purpose
       include MongoMapper::EmbeddedDocument
       include MP::Addressable

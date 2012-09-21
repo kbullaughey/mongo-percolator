@@ -2,7 +2,7 @@ require 'spec_helper'
 
 describe "MongoPercolator::Addressable unit" do
   before :all do
-    MP = MongoPercolator
+    ::MP = MongoPercolator unless Object.const_defined? :MP
     class Layer1
       include MP::Addressable
       class Layer2
