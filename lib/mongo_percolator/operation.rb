@@ -173,22 +173,37 @@ module MongoPercolator
       self.class.dependencies
     end
 
-    # Recompute the computed properties.
-    def recompute!
-      raise KeyError, "node is nil" if node.nil?
+    # Recompute the computed properties. If the node has not been saved then
+    # the node association won't be working. in this case, we can pass in 
+    # a node object to use. This is important when the validations required
+    # to save the node depend on the computed properties. Without the abilty
+    # to pass in the node, we wouldn't be able to compute the properties
+    # required to pass the validations becuase we couldn't load the node
+    # through the association because it hasn't been saved.
+    #
+    # @param given_node [MongoPercolator::Node] Node to recompute.
+    def recompute(given_node = nil)
+      given_node ||= node
+      raise KeyError, "node is nil" if given_node.nil?
 
       # Special variable used inside the block
       gathered_inputs = gather
 
       # Since I need access to the inputs from inside the emit block, I add
       # a singleton method to get them.
-      node.define_singleton_method :inputs do
+      given_node.define_singleton_method :inputs do
         gathered_inputs
       end
 
       # Execute the emit block in the context of the node, and save it.
-      node.instance_eval &emit_block
-      node.save!
+      given_node.instance_eval &emit_block
+    end
+
+    # Same as recompute() but it saves the node at the end
+    def recompute!(given_node = nil)
+      given_node ||= node
+      recompute(given_node)
+      given_node.save!
     end
 
     # Get the emit block from the class variable
