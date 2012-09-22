@@ -152,16 +152,36 @@ describe "MongoPercolator Node & Operation integration" do
         @node.reload
         @node.pets.should == %w(binturong dugong sloth)
       end
-  
-      it "gets an updated computed property when the parent is changed" do
-        @op.recompute!
-        @node.reload
-        @animals.farm = ['hog']
-        @animals.save
-        MongoPercolator::Operation.where(:_old => true).count.should == 1
-        MongoPercolator.percolate
-        @node.reload
-        @node.pets.should == %w(binturong dugong hog sloth)
+
+      context "computed initially" do
+        before :each do
+          @op.recompute!
+          @node.reload
+        end
+
+        it "should be marked as old when the parent is changed" do
+          @animals.farm = ['hog']
+          @animals.save
+          @node.reload
+          @node.real_op.old?.should be_true
+        end
+    
+        it "gets an updated computed property when the parent is changed" do
+          @animals.farm = ['hog']
+          @animals.save
+          MongoPercolator::Operation.where(:_old => true).count.should == 1
+          MongoPercolator.percolate
+          @node.reload
+          @node.pets.should == %w(binturong dugong hog sloth)
+        end
+
+        it "is no longer marked as old after percolation" do
+          @animals.farm = ['hog']
+          @animals.save
+          MongoPercolator.percolate
+          @node.reload
+          @node.real_op.old?.should be_false
+        end
       end
     end
   end

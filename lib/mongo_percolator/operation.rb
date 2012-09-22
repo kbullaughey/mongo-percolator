@@ -197,6 +197,11 @@ module MongoPercolator
 
       # Execute the emit block in the context of the node, and save it.
       given_node.instance_eval &emit_block
+
+      # Indicate that we're no longer old
+      self._old = false
+      save!
+
       nil
     end
 
@@ -231,6 +236,12 @@ module MongoPercolator
     # Instance verion of Operation.computed property
     def computed_property?(property)
       self.class.computed_property? property
+    end
+
+    # Indicate whether the operation needs recomputing (i.e. a parent has 
+    # changed).
+    def old?
+      _old
     end
 
   private
