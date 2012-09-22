@@ -197,6 +197,7 @@ module MongoPercolator
 
       # Execute the emit block in the context of the node, and save it.
       given_node.instance_eval &emit_block
+      nil
     end
 
     # Same as recompute() but it saves the node at the end
