@@ -6,16 +6,22 @@ module MongoPercolator
 
     module ClassMethods
       # Operations are a one-to-one mapping
-      def operation(klass)
+      def operation(label, klass)
+        raise ArgumentError, "Expecting class" unless klass.kind_of? Class
+        raise ArgumentError, "Malformed label" unless 
+          label =~ /^[a-z][A-Za-z0-9_?!]*$/
+
         # Declare the first direction of the association
-        one klass.to_s.underscore.to_sym, :foreign_key => :node_id
+        one label, :class => klass, :foreign_key => :node_id
 
         # Declare the other direction of the association
         klass.attach self
 
         # Invoke the blocks accompanying computed properties. I execute the
         # block in our own context using instance_eval.
-        klass.computed_properties.values.each { |block| instance_eval &block unless block.nil? }
+        klass.computed_properties.values.each do |block|
+          instance_eval &block unless block.nil?
+        end
 
         klass.finalize
       end

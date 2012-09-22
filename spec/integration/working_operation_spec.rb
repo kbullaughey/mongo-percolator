@@ -25,7 +25,7 @@ describe "MongoPercolator Node & Operation integration" do
     # Set up a node class
     class SomeNode
       include MongoPercolator::Node
-      operation RealOp
+      operation :real_op, RealOp
     end
   end
 
@@ -74,9 +74,27 @@ describe "MongoPercolator Node & Operation integration" do
       expect {
         class SomeOtherNode
           include MongoPercolator::Node
-          operation RealOp
+          operation :real_op, RealOp
         end
       }.to raise_error(MongoPercolator::Collision)
+    end
+
+    it "fails when passed a malformed label" do
+      expect {
+        class YetAnotherNode
+          include MongoPercolator::Node
+          operation :"not okay", RealOp
+        end
+      }.to raise_error(ArgumentError, /Malformed label/)
+    end
+
+    it "fails when not passed a class as the second param" do
+      expect {
+        class YetAnotherNode
+          include MongoPercolator::Node
+          operation :label, "not a class"
+        end
+      }.to raise_error(ArgumentError, /Expecting class/)
     end
 
     context "populated AnimalsIntegration" do
