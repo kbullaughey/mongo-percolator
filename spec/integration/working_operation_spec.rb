@@ -182,6 +182,13 @@ describe "MongoPercolator Node & Operation integration" do
           @node.reload
           @node.real_op.old?.should be_false
         end
+
+        it "only takes the number of passes needed" do
+          @animals.farm = ['hog']
+          @animals.save
+          passes_made = MongoPercolator.percolate 10
+          passes_made.should == 1
+        end
       end
     end
   end
