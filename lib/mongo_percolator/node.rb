@@ -12,7 +12,8 @@ module MongoPercolator
           label =~ /^[a-z][A-Za-z0-9_?!]*$/
 
         # Declare the first direction of the association
-        one label, :class => klass, :foreign_key => :node_id
+        one label, :class => klass, :foreign_key => :node_id, 
+          :dependent => :destroy
 
         # Declare the other direction of the association
         klass.attach self

@@ -136,6 +136,7 @@ describe "MongoPercolator Node & Operation integration" do
     context "has an op associated" do
       before :each do
         @node.real_op = @op
+        @node.save
       end
 
       it "has a real op associated" do
@@ -151,6 +152,22 @@ describe "MongoPercolator Node & Operation integration" do
         @op.recompute!
         @node.reload
         @node.pets.should == %w(binturong dugong sloth)
+      end
+
+      it "destroys its operations when node is destroyed" do
+        RealOp.first.id.should == @node.real_op.id
+        @node.destroy
+        SomeNode.count.should == 0
+        RealOp.count.should == 0
+      end
+
+      it "destroys the old operation when it's replaced" do
+        old_id = @node.real_op.id
+        RealOp.find(old_id).should_not be_nil
+        new_op = RealOp.new :animals => @animals
+        @node.real_op = new_op
+        @node.real_op.id.should_not == old_id
+        RealOp.find(old_id).should be_nil
       end
 
       context "computed initially" do
