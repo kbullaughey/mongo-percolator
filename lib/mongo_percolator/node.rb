@@ -4,7 +4,7 @@ module MongoPercolator
   module Node
     include MongoPercolator::Addressable
 
-    module ClassMethods
+    module DSL
       # Operations are a one-to-one mapping
       def operation(label, klass)
         raise ArgumentError, "Expecting class" unless klass.kind_of? Class
@@ -27,10 +27,27 @@ module MongoPercolator
         klass.finalize
       end
 
+      # Wrapper for declaring many associations, if the association is 
+      # many-to-many then some special setup is required.
+      #
+      # @param label [Symbol] Lable for many association.
+      # @param options [Hash] Options for this association.
+      # @param extension [Block] Optional block providing extension.
+      def many(label, options = {}, &extension)
+        super
+        label = label.to_sym
+        @manys ||= {}
+#        @manys[label] = ManyDescription.new 
+        binding.pry
+      end
+    end
+
+    module ClassMethods
       # This will be executed when this module is included in a class, after 
       # MongoMapper::Document is included.
       def setup
         before_save :propagate
+        before_save :refresh_many_ids
       end
     end
     
@@ -40,6 +57,7 @@ module MongoPercolator
       # think MongoMapper::Document assumes that it's getting included into a 
       # class and not another module.
       mod.instance_eval { include MongoMapper::Document }
+      mod.extend DSL
       mod.extend ClassMethods
       mod.setup
     end
@@ -65,6 +83,12 @@ module MongoPercolator
         op.save!
       end
       return true
+    end
+
+    # In order to track many-to-many relationships, which involve maintaining a
+    # list of ids at some arbitrary location in the object, I duplicate this 
+    # list in the graph.
+    def refresh_many_ids
     end
   end
 end
