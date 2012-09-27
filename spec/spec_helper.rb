@@ -31,3 +31,7 @@ require 'pry'
 # Connect our test database
 MongoPercolator.connect
 clean_db
+
+# Use factory girl for fixtures
+require 'factory_girl'
+FactoryGirl.find_definitions
