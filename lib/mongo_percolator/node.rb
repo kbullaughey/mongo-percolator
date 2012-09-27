@@ -26,20 +26,6 @@ module MongoPercolator
 
         klass.finalize
       end
-
-      # Wrapper for declaring many associations, if the association is 
-      # many-to-many then some special setup is required.
-      #
-      # @param label [Symbol] Lable for many association.
-      # @param options [Hash] Options for this association.
-      # @param extension [Block] Optional block providing extension.
-      def many(label, options = {}, &extension)
-        super
-        label = label.to_sym
-        @manys ||= {}
-#        @manys[label] = ManyDescription.new 
-        binding.pry
-      end
     end
 
     module ClassMethods
@@ -47,7 +33,8 @@ module MongoPercolator
       # MongoMapper::Document is included.
       def setup
         before_save :propagate
-        before_save :refresh_many_ids
+        after_save :refresh_many_ids
+        before_destroy :remove_references_to_me
       end
     end
     
@@ -89,6 +76,15 @@ module MongoPercolator
     # list of ids at some arbitrary location in the object, I duplicate this 
     # list in the graph.
     def refresh_many_ids
+      Many.update_many_copy_for(self)
+    end
+
+    # This looks in the percolatory many-to-many association lookup table for
+    # this document's id, to see if it needs to be removed from any many-to-many
+    # associations.
+    def remove_references_to_me
+      Many.delete_id id
+      true
     end
   end
 end
