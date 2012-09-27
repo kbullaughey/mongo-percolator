@@ -25,8 +25,8 @@ def clean_db
 end
 
 require 'bundler/setup'
-require 'mongo_percolator'
 require 'pry'
+require 'mongo_percolator'
 
 # Connect our test database
 MongoPercolator.connect
