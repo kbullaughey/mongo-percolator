@@ -29,11 +29,14 @@ describe "MongoPercolator Node & Operation integration" do
     end
   end
 
+  before :each do
+    AnimalsIntegration.remove
+    MongoPercolator::Operation.remove
+    SomeNode.remove
+  end
+
   describe "RealOp" do
     before :each do
-      AnimalsIntegration.remove
-      MongoPercolator::Operation.remove
-      SomeNode.remove
       @animals = AnimalsIntegration.new
       @op = RealOp.new
     end
@@ -155,10 +158,12 @@ describe "MongoPercolator Node & Operation integration" do
       end
 
       it "destroys its operations when node is destroyed" do
-        RealOp.first.id.should == @node.real_op.id
+        real_op_id = @node.real_op.id
+        node_id = @node.id
+        RealOp.find(real_op_id).should_not be_nil
         @node.destroy
-        SomeNode.count.should == 0
-        RealOp.count.should == 0
+        SomeNode.find(node_id).should be_nil
+        RealOp.find(real_op_id).should be_nil
       end
 
       it "destroys the old operation when it's replaced" do
