@@ -30,7 +30,8 @@ end
 
 def commit_version(v)
   sh "git add lib/mongo_percolator/version.rb"
-  sh "git commit -m 'Bumping version to #{v}' lib/mongo_percolator/version.rb"
+  sh "git commit lib/mongo_percolator/version.rb"
+  sh "git tag -a 'v#{v}' -m 'Version bump to #{v}'"
 end
 
 desc "Show version"
