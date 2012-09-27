@@ -6,6 +6,7 @@ describe "MongoPercolator::Addressable unit" do
     class Layer1
       include MP::Addressable
       class Layer2
+        attr_accessor :id
         class Layer3
           def boom
             "Ouch!"
@@ -18,10 +19,100 @@ describe "MongoPercolator::Addressable unit" do
       def bing
         Layer2.new
       end
+      def powpowpow
+        [{:id => '1', :sound => 'eeek'}, {:id => '2', :sound => 'aaaah'}]
+      end
+      def kazam!
+        o1 = Layer2.new
+        o1.id = 'a'
+        o2 = Layer2.new
+        o2.id = 'b'
+        [o1, o2]
+      end
       def bada
         {:bing => {'bada' => {'bam' => {'bada' => {'boom' => 'Ouch!!!'}}}}, :nothing => nil}
       end
     end
+  end
+
+  it "can regognize an array key" do
+    MP::Addressable.array?('array[123]').should be_true
+  end
+
+  it "knows when a key is not an array (1)" do
+    MP::Addressable.array?('array[]').should be_false
+  end
+
+  it "knows when a key is not an array (2)" do
+    MP::Addressable.array?('array[').should be_false
+  end
+
+  it "knows when a key is not an array (3)" do
+    MP::Addressable.array?('array]').should be_false
+  end
+
+  it "knows when a key is not an array (3)" do
+    MP::Addressable.array?('[]').should be_false
+  end
+
+  it "knows when a key is not an array (3)" do
+    MP::Addressable.array?('blah').should be_false
+  end
+
+  it "can extract the array name" do
+    MP::Addressable.array_name('array[123]').should == "array"
+  end
+
+  it "can extract a single-character array name" do
+    MP::Addressable.array_name('a[123]').should == "a"
+  end
+
+  it "can extract the array index" do
+    MP::Addressable.array_index('array[123]').should == '123'
+  end
+
+  it "can regognize a valid array segment" do
+    MP::Addressable.valid_segment?('array[123]').should be_true
+  end
+
+  it "can recognize a valid segment that's not an array segment" do
+    MP::Addressable.valid_segment?('not_an_array').should be_true
+  end
+
+  it "knows two indices is invalid" do
+    MP::Addressable.valid_segment?('[a][b]').should be_false
+  end
+
+  it "knows two empty indices is invalid" do
+    MP::Addressable.valid_segment?('[][]').should be_false
+  end
+
+  it "knows an index missing an open is invalid" do
+    MP::Addressable.valid_segment?('array]').should be_false
+  end
+
+  it "knows an index missing a close is invalid" do
+    MP::Addressable.valid_segment?('array[').should be_false
+  end
+
+  it "knows an empty string is invalid" do
+    MP::Addressable.valid_segment?('').should be_false
+  end
+
+  it "knows an array with no label is invalid" do
+    MP::Addressable.valid_segment?('[123]').should be_false
+  end
+
+  it "knows funny characters in the index is okay" do
+    MP::Addressable.valid_segment?('array[@$@%"]').should be_true
+  end
+
+  it "knows an invalid character is invalid" do
+    MP::Addressable.valid_segment?('@').should be_false
+  end
+
+  it "knows an invalid character in the array name is invalid" do
+    MP::Addressable.valid_segment?('arr@y[123]').should be_false
   end
 
   describe "fetching" do
@@ -44,7 +135,17 @@ describe "MongoPercolator::Addressable unit" do
     it "can address a multi-layer address" do
       Layer1.new.fetch('bing.bam.boom').should == "Ouch!"
     end
-  
+
+    it "can fetch from an array" do
+      res = Layer1.new.fetch('powpowpow[1]')
+      res.should_not be_nil
+      res[:sound].should == 'eeek'
+    end
+
+    it "can fetch into an object within an array item" do
+      Layer1.new.fetch('kazam![b].bam.boom').should == "Ouch!"
+    end
+
     it "can fetch using the class method" do
       MP::Addressable.fetch('bing.bam.boom', :target => Layer1.new).should == "Ouch!"
     end
@@ -74,6 +175,20 @@ describe "MongoPercolator::Addressable unit" do
   
     it "can address an existing key that evaluates to nil" do
       Layer1.new.fetch('bada.nothing', :raise_on_invalid => true).should be_nil
+    end
+  end
+
+  describe "find_in_array" do
+    it "can use id symbols in a hash" do
+      target = [{:id => :okay}, {:id => :fail}]
+      MP::Addressable.find_in_array("okay", target).should == {:id => :okay}
+    end
+
+    it "can use ObjectIds in a hash" do
+      target = [{:id => BSON::ObjectId('5064cfe1a0b7f96cb9000008')}, 
+        {:id => BSON::ObjectId('5064cfe1a0b7f96cb9000009')}]
+      MP::Addressable.find_in_array("5064cfe1a0b7f96cb9000008", target).should == 
+        {:id => BSON::ObjectId('5064cfe1a0b7f96cb9000008')}
     end
   end
 

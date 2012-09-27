@@ -1,3 +1,6 @@
+require 'active_support/concern'
+require 'active_support/core_ext/string/inflections'
+
 require 'mongo_mapper'
 require 'mongo_percolator/version'
 
@@ -56,6 +59,8 @@ end
 
 require 'mongo_percolator/addressable'
 require 'mongo_percolator/addressable/diff'
+require 'mongo_percolator/node_common'
+require 'mongo_percolator/embedded_node'
 require 'mongo_percolator/exceptions'
 require 'mongo_percolator/many'
 require 'mongo_percolator/node'

@@ -10,41 +10,24 @@ describe MongoPercolator::Many::Copy do
   end
 
   it { should respond_to(:ids) }
-  it { should respond_to(:node) }
-  it { should respond_to(:node_id) }
+  it { should respond_to(:root) }
+  it { should respond_to(:root_id) }
   it { should respond_to(:path) }
+  it { should respond_to(:label) }
 
   it "can be saved with factory defaults" do
     copy.save.should be_true
   end
 
-  it "fails to be saved without a path" do
-    copy.path = nil
+  it "fails to be saved without a label" do
+    copy.label = nil
     copy.save.should be_false
+    copy.errors[:label].should_not be_nil
   end
 
-  it "fails to be saved without a node" do
-    copy.node_id = nil
+  it "fails to be saved without a root" do
+    copy.root_id = nil
     copy.save.should be_false
-  end
-
-  it "knows the last segment of a one-layer path" do
-    copy.path = "level1"
-    copy.property.should == "level1"
-  end
-
-  it "knows the last segment of a two-layer path" do
-    copy.path = "level1.level2"
-    copy.property.should == "level2"
-  end
-
-  it "knows a one-layer path is not nested" do
-    copy.path = "level1"
-    copy.nested?.should be_false
-  end
-
-  it "knows a two-layer path is nested" do
-    copy.path = "level1.level2"
-    copy.nested?.should be_true
+    copy.errors[:root].should_not be_nil
   end
 end

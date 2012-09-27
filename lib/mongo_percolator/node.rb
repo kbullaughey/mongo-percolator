@@ -1,7 +1,8 @@
-require 'active_support/core_ext/string/inflections'
+require 'mongo_percolator/node_common'
 
 module MongoPercolator
   module Node
+    extend ActiveSupport::Concern
     include MongoPercolator::NodeCommon
 
     module DSL
@@ -36,15 +37,15 @@ module MongoPercolator
       end
     end
     
-    def self.included(mod)
+    included do
       # For some reason I can't simply include MongoMapper::Document. I need to
-      # defer it until MongoPercolator::Document itself is included because I
+      # defer it until MongoPercolator::Node itself is included because I
       # think MongoMapper::Document assumes that it's getting included into a 
       # class and not another module.
-      mod.instance_eval { include MongoMapper::Document }
-      mod.extend DSL
-      mod.extend ClassMethods
-      mod.setup
+      instance_eval { include MongoMapper::Document }
+      extend DSL
+      common_setup
+      setup
     end
 
     #-----------------
@@ -68,21 +69,6 @@ module MongoPercolator
         op.save!
       end
       return true
-    end
-
-    # In order to track many-to-many relationships, which involve maintaining a
-    # list of ids at some arbitrary location in the object, I duplicate this 
-    # list in the graph.
-    def refresh_many_ids
-      Many.update_many_copy_for(self)
-    end
-
-    # This looks in the percolatory many-to-many association lookup table for
-    # this document's id, to see if it needs to be removed from any many-to-many
-    # associations.
-    def remove_references_to_me
-      Many.delete_id id
-      true
     end
   end
 end

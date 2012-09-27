@@ -7,7 +7,7 @@ module MongoPercolator
     # Use Forwardable to create instance versions that pass through to the 
     # corresponding class methods
     extend Forwardable
-    def_delegators Addressable, :match_head, :head, :tail
+    def_delegators Addressable, :match_head, :head, :tail, :pieces
 
     #---------------------------
     # Instance methods for mixin
@@ -87,16 +87,14 @@ module MongoPercolator
       raise_on_invalid = options[:raise_on_invalid] || false
       p = pieces(addr)
       while !p.empty?
+        index = nil
         segment = p.shift
+        raise InvalidAddress, "Invalid segment" unless valid_segment? segment
+        if array? segment
+          segment, index = array_name(segment), array_index(segment)
+        end
         if target.kind_of? Hash
-          if target.include? segment.to_s
-            target = target[segment.to_s]
-          elsif target.include? segment.to_sym
-            target = target[segment.to_sym]
-          else
-            raise InvalidAddress, "key #{segment} missing" if raise_on_invalid
-            return nil
-          end
+          target = indifferent_hash_get(segment, target, options)
         else
           if target.respond_to? segment
             target = target.send segment
@@ -105,8 +103,51 @@ module MongoPercolator
             return nil
           end
         end
+        if !index.nil?
+          raise TypeError, "Expecting array" unless target.kind_of? Array
+          target = find_in_array(index, target, options)
+        end
       end
       target
+    end
+
+    def self.array?(key)
+      !!(key =~ /[^\[\]]\[[^\]]+\]/)
+    end
+
+    def self.array_name(key)
+      key.sub(/\[.*$/, "")
+    end
+
+    def self.array_index(key)
+      key[/\[([^\]]+)\]/, 1]
+    end
+
+    def self.valid_segment?(key)
+      !!(key =~ /^[-A-Za-z0-9_?!]+(\[[^\]]+\])?$/)
+    end
+
+    def self.indifferent_hash_get(key, hash, options = {})
+      if hash.include? key.to_s
+        hash[key.to_s]
+      elsif hash.include? key.to_sym
+        hash[key.to_sym]
+      else
+        raise InvalidAddress, "key #{key} missing" if
+          options[:raise_on_invalid]
+        nil
+      end
+    end
+
+    def self.find_in_array(index, target, options = {})
+      items = target.select do |item|
+        if item.kind_of? Hash
+          indifferent_hash_get(:id, item, options).to_s == index
+        else
+          item.respond_to?(:id) ? item.send(:id).to_s == index : false
+        end
+      end
+      items.first
     end
   end
 end

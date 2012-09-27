@@ -9,22 +9,25 @@ module MongoPercolator
           # Only worry about many-to-many associations using the :in option.
           next unless association.in_array?
 
-          raise MissingData unless association.options[:in]
-          ids_label = association.options[:in]
+          ids_label = association.options[:in].to_s
           ids = doc.send ids_label
 
-          # Handle the case in which the association is not embedded.
-          if root? doc
-            Copy.create! :node => doc, :path => ids_label.to_s, :ids => ids
-          end
+          path = doc.root? ? nil : doc.path_to_root
+
+          # Either edit an existing document or make a new one
+          selector = {:node_id => doc.id, :label => ids_label}
+          many_copy = Copy.where(selector).first || Copy.new(selector)
+
+          # Update it with the current info
+          many_copy.root = doc.find_root
+          many_copy.path = path
+          many_copy.ids = ids
+
+          many_copy.save
         end
       end
     end
-
-    def self.root?(doc)
-      doc._root_document == doc
-    end
-
+  
     def self.delete_id(id)
       raise TypeError, "Expecting ObjectId" unless id.kind_of? BSON::ObjectId
       # Loop over the Many::Copy instances that contain id
@@ -38,47 +41,31 @@ module MongoPercolator
       set_collection_name 'mongo_percolator.manys'
   
       key :ids, Array, :default => []
-      belongs_to :node, :polymorphic => true
-      key :path, String, :required => true
+      belongs_to :root, :polymorphic => true
+      key :node_id, BSON::ObjectId
+      key :path, String
+      key :label, String, :required => true
 
-      validate :check_node
+      validate :check
 
       # Remove the id from the Many::Copy instance and from the original node.
       def delete_id(id)
-        doc = doc_at_path
-        ids_in_doc = doc.send property
+        ids_in_doc = root.fetch(full_path)
         raise TypeError, "Expecting array" unless ids_in_doc.kind_of? Array
         ids_in_doc.delete id
-        doc.save!
+        root.save!
         ids.delete id
         save!
       end
 
-      # Determine if we'll be looking into the document or at the root.
-      def nested?
-        path.include? "."
-      end
-
-      # Get the last segment of the path, this is the key for the ids.
-      def property
-        path.split(".").last
-      end
-
-      # Get the possibly nested document where the ids are stored.
-      def doc_at_path
-        raise MissingData, "No node associated" if node.nil?
-        if nested?
-          raise NotImplemenetedError, "multi-layer paths not supported"
-        else
-          doc = node
-        end
-        doc or raise MissingData, "Failed to resolve path" 
+      def full_path
+        [path, label].compact.join "."
       end
 
     private
-      # Make sure we have a node associated.
-      def check_node
-        errors.add :node, "Must have a node" if node_id.nil?
+      # Make sure we have a root associated.
+      def check
+        errors.add :root, "Must have a root node" if root_id.nil?
       end
     end
   end
