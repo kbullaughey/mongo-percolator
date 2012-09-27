@@ -7,8 +7,12 @@ module MongoPercolator
     include MongoMapper::Document
     include Addressable
 
+    # The primary job of each operation instance is to keep track of which
+    # particular parent documents the operation depends on.
     key :parent_ids, Array, :typecast => 'BSON::ObjectId'
-    key :_old, Boolean, :default => false
+
+    # Start the operation out as needing recomputation.
+    key :_old, Boolean, :default => true
 
     # These domain-specific langauge methods are to be used in specifying the 
     # operation definition that inherits from this class.
