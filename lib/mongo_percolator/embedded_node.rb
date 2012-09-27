@@ -1,38 +1,17 @@
-require 'active_support/core_ext/string/inflections'
-
 module MongoPercolator
-  module Node
-    include MongoPercolator::NodeCommon
+  module EmbeddedNode
+    include MongoPercolator::Addressable
 
     module DSL
-      # Operations are a one-to-one mapping
-      def operation(label, klass)
-        raise ArgumentError, "Expecting class" unless klass.kind_of? Class
-        raise ArgumentError, "Malformed label" unless 
-          label =~ /^[a-z][A-Za-z0-9_?!]*$/
-
-        # Declare the first direction of the association
-        one label, :class => klass, :foreign_key => :node_id, 
-          :dependent => :destroy
-
-        # Declare the other direction of the association
-        klass.attach self
-
-        # Invoke the blocks accompanying computed properties. I execute the
-        # block in our own context using instance_eval.
-        klass.computed_properties.values.each do |block|
-          instance_eval &block unless block.nil?
-        end
-
-        klass.finalize
-      end
     end
 
     module ClassMethods
       # This will be executed when this module is included in a class, after 
-      # MongoMapper::Document is included.
+      # MongoMapper::EmbeddedDocument is included.
       def setup
         before_save :propagate
+        after_save :refresh_many_ids
+        before_destroy :remove_references_to_me
       end
     end
     

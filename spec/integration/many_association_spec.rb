@@ -34,7 +34,7 @@ describe "MongoPercolator many association (integration)" do
     TestManyAssociation1.new.save
   end
 
-  it "can find the path for an embedded document via one" do
+  it "can find the path for a root-level property" do
     a = TestManyAssociation1.new
     a.save
     many_copy = MongoPercolator::Many::Copy.where(:node_id => a.id).first
@@ -42,6 +42,9 @@ describe "MongoPercolator many association (integration)" do
     many_copy.node_type.should == "TestManyAssociation1"
     many_copy.path.should == "dugong_ids"
     many_copy.ids.should == []
+  end
+
+  it "can find the path for a property in an embedded document" do
   end
 
   it "sets the ids when there are some" do
