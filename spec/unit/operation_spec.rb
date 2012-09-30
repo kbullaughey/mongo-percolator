@@ -28,6 +28,17 @@ describe "MongoPercolator::Operation unit" do
       depends_on 'animals.wild'
       depends_on 'locations_unit_tests'
     end
+
+    # Set up another derived class that isn't inserted into a node and thus
+    # remains unfrozen.
+    class RealOpUnfrozen < MongoPercolator::Operation
+    end
+  end
+
+  before :each do
+    RealOpUnit.remove
+    LocationsUnitTest.remove
+    AnimalsUnitTest.remove
   end
 
   describe "DSL is limited to subclasses" do
@@ -66,7 +77,7 @@ describe "MongoPercolator::Operation unit" do
     it "doesn't singularize if requested not to" do
       blah_class = Class
       stub_const("Blahs", blah_class)
-      c = RealOpUnit.guess_class :blahs, 
+      c = RealOpUnfrozen.guess_class :blahs, 
         :no_singularize => true
       c.should == blah_class
     end
@@ -74,15 +85,15 @@ describe "MongoPercolator::Operation unit" do
     it "signularizes if not requested not to" do
       blah_class = Class
       stub_const("Blah", blah_class)
-      c = RealOpUnit.guess_class :blahs, {}
+      c = RealOpUnfrozen.guess_class :blahs, {}
       c.should == blah_class
     end
   
     it "adds the reader to the parent_labels set" do
       goop_class = Class
       stub_const("Goop", goop_class)
-      c = RealOpUnit.guess_class(:goop, {})
-      RealOpUnit.parent_labels.should include(:goop)
+      c = RealOpUnfrozen.guess_class(:goop, {})
+      RealOpUnfrozen.parent_labels.should include(:goop)
     end
   end
 
