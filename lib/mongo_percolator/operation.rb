@@ -1,3 +1,5 @@
+require 'mongo_percolator/parent_meta'
+
 module MongoPercolator
 
   # Abstract operation class from which operations inherit.
@@ -8,11 +10,18 @@ module MongoPercolator
     include Addressable
 
     # The primary job of each operation instance is to keep track of which
-    # particular parent documents the operation depends on.
-    key :parent_ids, Array, :typecast => 'BSON::ObjectId'
+    # particular parent documents the operation depends on. For this purpose
+    # I use a custom mongo type, ParentMeta. The parents object is accessed
+    # by reader and writer methods that are set up for each parent lable when
+    # they are declared. 
+    key :parents, ParentMeta
+    attr_protected :parents
 
     # Start the operation out as needing recomputation.
     key :_old, Boolean, :default => true
+
+    # created_at and updated_at
+    timestamps!
 
     # These domain-specific langauge methods are to be used in specifying the 
     # operation definition that inherits from this class.
@@ -21,6 +30,7 @@ module MongoPercolator
       # executed in the context of the node, and thus have access to member 
       # functions and variables.
       def emit &block
+        ensure_is_subclass
         raise ArgumentError, "Emit block takes no args" unless block.arity == 0
         raise Collision, "emit already called" unless @emit.nil?
         @emit = block
@@ -41,6 +51,7 @@ module MongoPercolator
       # @param &body [Block] A block defining the key or association for the 
       #   computed property (optional)
       def computes(property, &body)
+        ensure_is_subclass
         @computed_properties ||= {}
         @computed_properties[property.to_sym] = body
       end
@@ -49,6 +60,7 @@ module MongoPercolator
       # @param path [String] Dot-separated string giving the location of data 
       #   needed for emit()
       def depends_on(path)
+        ensure_is_subclass
         dependencies.add path
       end
 
@@ -57,91 +69,162 @@ module MongoPercolator
       #   reader method name if :class => ClassName is given.
       # @param options [Hash] An optional options hash:
       #   :class [Class] - The class of the parent if not inferrable from label.
-      #   :position [Integer] - Position in parent_ids array if not given in 
-      #     the same order in the class definition as in the array.
       def parent(reader, options={})
-        reader = reader.to_sym unless reader.kind_of? Symbol
-        writer = "#{reader}=".to_sym
-
-        # Keep track of the class of each parent
-        klass = options[:class] || reader.to_s.camelize.constantize
-        raise ArgumentError, "Expecting Class" unless klass.kind_of? Class
-
-        # Keep track of how many parents we've defined so we know where in the
-        # parent_ids array to look for this one.
-        position = options[:position] || parent_count
-
-        # I need to be able to look up the parent association label by position.
-        parents[position] = reader
+        ensure_is_subclass
+        klass = guess_class(reader, options)
 
         # These readers and writers are closures, and so they have access
-        # to the local scope, which includes information about the class
-        # and index of each parent. None of this is persisted to the database
-        # and thus depends on the ruby code.
+        # to the local scope, which includes the above three variables.
 
         # Define a reader method
         define_method reader do
+          ensure_parents_exists
           # Cache the parent in an instance variable
           unless instance_variable_defined? ivar(reader)
-            parent = klass.send :find, parent_ids[position]
-            raise MissingData, "Failed to find parent" if parent.nil?
-            instance_variable_set ivar(reader), parent
+            ids = parents[reader]
+            raise TypeError, "expecting singular parent" if ids.length > 1
+            return nil if ids.first.nil?
+            result = klass.send :find, ids.first
+            raise MissingData, "Failed to find parent" if result.nil?
+            instance_variable_set ivar(reader), result
           end
           instance_variable_get ivar(reader)
         end
+
+        # Define a reader for the id of the single parent
+        define_method "#{reader}_id" do
+          ensure_parents_exists
+          parents[reader].first
+        end
         
         # Define a writer method
-        define_method writer do |obj|
-          # Make sure the object is persisted, because we need the id
-          obj.save! unless obj.persisted?
-          raise ArgumentError, "No ObjectId" if obj.id.nil?
-          parent_ids[position] = obj.id
+        define_method "#{reader}="do |object|
+          ensure_parents_exists
+          obj_id = ensure_id(object)
+          # Set the parent ids in the ParentMeta instance
+          parents[reader] = [obj_id]
+        end
+
+        # Define a writer for the id of the single parent
+        define_method "#{reader}_id=" do |id|
+          ensure_parents_exists
+          parents[reader] = [id]
+        end
+      end
+
+      # Add a parent. Use this method when there is a variable number of 
+      # parents of the given type.
+      #
+      # @param reader [Symbol] The underscore version of the class name or the 
+      #   reader method name if :class => ClassName is given.
+      # @param options [Hash] An optional options hash:
+      #   :class [Class] - The class of the parent if not inferrable from label.
+      #   :no_singularize [Boolean] - Don't singularize when guessing the
+      #     class name
+      def parents(reader, options={})
+        ensure_is_subclass
+        klass = guess_class(reader, options)
+
+        # These readers and writers are closures, and so they have access
+        # to the local scope, which includes the above three variables.
+
+        # Define a reader method
+        define_method reader do
+          ensure_parents_exists
+          # Cache the parent in an instance variable
+          unless instance_variable_defined? ivar(reader)
+            ids = parents[reader]
+            result = klass.send :find, ids
+            raise MissingData, "Failed to find parent" if 
+              result.length != parents[reader].length
+            instance_variable_set ivar(reader), result
+          end
+          instance_variable_get ivar(reader)
+        end
+
+        # Define a reader for ids
+        define_method "#{singular(reader, options)}_ids" do
+          ensure_parents_exists
+          parents[reader]
+        end
+        
+        # Define a writer method
+        define_method "#{reader}=" do |objects|
+          ensure_parents_exists
+          # Set the parent ids in the ParentMeta instance
+          parents[reader] = objects.collect {|obj| ensure_id(obj)}
+        end
+
+        # Define a writer for ids
+        define_method "#{singular(reader, options)}_ids=" do |ids|
+          ensure_parents_exists
+          parents[reader] = ids
         end
       end
     end
 
     # These class methods are for general use and not really part of the DSL
     module ClassMethods
+      # @private
+      def guess_class(reader, options)
+        ensure_is_subclass
+
+        # Keep track of the class of each parent
+        klass = options[:class]
+        if klass.nil?
+          guess = reader.to_s
+          guess = guess.singularize unless options[:no_singularize]
+          klass = guess.camelize.constantize
+        end
+        raise ArgumentError, "Expecting Class" unless klass.kind_of? Class
+
+        # I take note of all the parent labels defined
+        @parent_labels ||= Set.new
+        @parent_labels.add reader
+
+        klass
+      end
+
       # Return the list of properties that are computed by this operation
       def computed_properties
+        ensure_is_subclass
         @computed_properties || {}
       end
 
       # Return the set of dependencies
       def dependencies
+        ensure_is_subclass
         @dependencies ||= Set.new
         @dependencies
       end
 
-      # Give the number of parents defined for this operation
-      def parent_count
-        parents.length
-      end
-
-      # Return the parents hash mapping classes to labels.
-      def parents
-        @parents ||= []
-        @parents
-      end
-
       # Return the emit block
       def emit_block
+        ensure_is_subclass
         @emit
+      end
+
+      # Return the array of parent labels
+      def parent_labels
+        ensure_is_subclass
+        @parent_labels
       end
 
       # Indicate whether the property is a computed property.
       #
       # @param property [Symbol] Name of property.
       def computed_property?(property)
+        ensure_is_subclass
         computed_properties.include? property.to_sym
       end
 
       # This is called when the operation is declared on a node. It performs
       # some additional setup.
       def finalize
+        ensure_is_subclass
         unless @finalized
           raise NotImplementedError, "Need emit" if @emit.nil?
-          parents.freeze
+          @parent_types.freeze
           @finalized = true
         end
       end
@@ -152,9 +235,19 @@ module MongoPercolator
       #
       # @param klass [Class] The class of the node.
       def attach(klass)
+        ensure_is_subclass
         raise Collision, "Operation already attached" if @attached
         @attached = true
         belongs_to :node, :class => klass
+      end
+
+      def ensure_is_subclass
+        raise RuntimeError, "Operation must be subclassed" if 
+          self == MongoPercolator::Operation
+      end
+
+      def singular(label, options)
+        options[:no_singularize] ? label : label.to_s.singularize.to_sym
       end
     end
 
@@ -248,6 +341,12 @@ module MongoPercolator
       _old
     end
 
+    # Reach into the parent meta and get the parent ids
+    def parent_ids
+      [] if parents.nil?
+      parents.ids
+    end
+
   private
     def ivar(name)
       "@#{name}".to_sym
@@ -263,5 +362,17 @@ module MongoPercolator
       raise ArgumentError, "parent not found" if position.nil?
       self.class.parents[position]
     end
+
+    def ensure_parents_exists
+      self.parents ||= ParentMeta.new
+    end
+
+    def ensure_id(obj)
+      # Make sure the objects are persisted, because we need the id
+      obj.save! unless obj.persisted?
+      raise ArgumentError, "No ObjectId" if obj.id.nil?
+      obj.id
+    end
+
   end 
 end

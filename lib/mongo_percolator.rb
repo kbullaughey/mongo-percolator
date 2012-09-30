@@ -65,3 +65,6 @@ require 'mongo_percolator/exceptions'
 require 'mongo_percolator/many'
 require 'mongo_percolator/node'
 require 'mongo_percolator/operation'
+require 'mongo_percolator/parent_meta'
+
+# END
