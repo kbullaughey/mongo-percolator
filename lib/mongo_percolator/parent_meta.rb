@@ -1,5 +1,7 @@
 module MongoPercolator
   class ParentMeta
+    include Addressable
+
     module ClassMethods
       # Serialize the parents hash into {name => count}, parent_ids format.
       def to_mongo(val)
@@ -103,6 +105,14 @@ module MongoPercolator
     # individual lists of parents can still be modified.
     def freeze
       @parent_types.freeze
+    end
+
+    # Determine whether the parent label exists for this parent meta
+    #
+    # @param parent [String|Symbol] Parent label to check for.
+    def include?(parent)
+      parent = parent.to_s
+      @parents.include? parent
     end
   end
 end
