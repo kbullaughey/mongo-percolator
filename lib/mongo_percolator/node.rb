@@ -60,7 +60,7 @@ module MongoPercolator
       # If not saved, then we can't have anything else that depends on us.
       return true if not persisted?
 
-      MongoPercolator::Operation.where(:parent_ids => id).find_each do |op|
+      MongoPercolator::Operation.where('parents.ids' => id).find_each do |op|
         # If we (the parent) have changed in ways that are meaningful to this
         # operation, then we cause the relevant computed properties to be 
         # recomputed. 

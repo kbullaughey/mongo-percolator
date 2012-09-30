@@ -42,7 +42,7 @@ describe "MongoPercolator Node & Operation integration" do
     end
 
     it "is frozen" do
-      RealOp.parents.frozen?.should be_true
+      RealOp.parent_labels.frozen?.should be_true
     end
 
     it "persists the parent on assignment" do
@@ -69,8 +69,8 @@ describe "MongoPercolator Node & Operation integration" do
       @op.should respond_to(:node)
     end
 
-    it "has the correct count of parents" do
-      RealOp.parent_count.should == 1
+    it "has the correct parent labels" do
+      RealOp.parent_labels.to_a.should == [:animals]
     end
 
     it "cannot be added to another class" do
@@ -103,8 +103,11 @@ describe "MongoPercolator Node & Operation integration" do
     context "populated AnimalsIntegration" do
       before :each do
         @animals = AnimalsIntegration.new :wild => %w(sloth binturong)
-        @animals.save!
         @op.animals = @animals
+      end
+
+      it "saves the parent on assignment" do
+        @animals.should be_persisted
       end
 
       it "knows which dependencies have changed (1)" do
@@ -182,6 +185,7 @@ describe "MongoPercolator Node & Operation integration" do
         end
 
         it "should be marked as old when the parent is changed" do
+          @node.real_op.old?.should be_false
           @animals.farm = ['hog']
           @animals.save
           @node.reload

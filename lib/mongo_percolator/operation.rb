@@ -222,9 +222,9 @@ module MongoPercolator
       # some additional setup.
       def finalize
         ensure_is_subclass
-        unless @finalized
+        unless @finalized == true
           raise NotImplementedError, "Need emit" if @emit.nil?
-          @parent_types.freeze
+          @parent_labels.freeze
           @finalized = true
         end
       end
@@ -347,11 +347,6 @@ module MongoPercolator
       parents.ids
     end
 
-  private
-    def ivar(name)
-      "@#{name}".to_sym
-    end
-
     # The label for a parent class is not necessarily the underscore version of
     # the class name, so we look up the label.
     #
@@ -360,7 +355,12 @@ module MongoPercolator
     def parent_label(parent)
       position = parent_ids.index parent.id
       raise ArgumentError, "parent not found" if position.nil?
-      self.class.parents[position]
+      parents.parent_at(position).to_sym
+    end
+
+  private
+    def ivar(name)
+      "@#{name}".to_sym
     end
 
     def ensure_parents_exists

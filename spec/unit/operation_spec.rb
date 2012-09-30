@@ -144,17 +144,34 @@ describe "MongoPercolator::Operation unit" do
       op.parent_ids.should == ["a"]
     end
 
-    it "can gather the data for the operation" do
-      p1 = AnimalsUnitTest.new(:wild => %w(sloth binturong), :farm => ["pig"])
-      p2s = [LocationsUnitTest.new(:country => 'france'), 
-        LocationsUnitTest.new(:country => 'russia')]
-      op = RealOpUnit.new :animals => p1, :locations_unit_tests => p2s
-      data = op.gather
-      data.should be_kind_of(Hash)
-      data['animals.farm'].should == ["pig"]
-      data['animals.wild'].should == ["sloth", "binturong"]
-      data['locations_unit_tests'].should be_kind_of(Array)
-      data['locations_unit_tests'].collect{|x| x.country}.should == %w(france russia)
+    context "has parents" do
+      before :each do
+        @p1 = AnimalsUnitTest.new(:wild => %w(sloth binturong), :farm => ["pig"])
+        @p2s = [LocationsUnitTest.new(:country => 'france'), 
+          LocationsUnitTest.new(:country => 'russia')]
+        @op = RealOpUnit.new :animals => @p1, :locations_unit_tests => @p2s
+      end
+
+      it "should know the parent is a parent" do
+        @op.parent?(@p1).should be_true
+        @op.parent?(@p2s[0]).should be_true
+        @op.parent?(@p2s[1]).should be_true
+      end
+
+      it "should know the labels for parents" do
+        @op.parent_label(@p1).should == :animals
+        @op.parent_label(@p2s[0]).should == :locations_unit_tests
+        @op.parent_label(@p2s[1]).should == :locations_unit_tests
+      end
+
+      it "can gather the data for the operation" do
+        data = @op.gather
+        data.should be_kind_of(Hash)
+        data['animals.farm'].should == ["pig"]
+        data['animals.wild'].should == ["sloth", "binturong"]
+        data['locations_unit_tests'].should be_kind_of(Array)
+        data['locations_unit_tests'].collect{|x| x.country}.should == %w(france russia)
+      end
     end
   end
 end
