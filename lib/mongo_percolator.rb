@@ -22,17 +22,18 @@ module MongoPercolator
     nil
   end
 
-  # Duplicate a hash, but remove all the '_id' keys, recursively. Be careful 
-  # about cycles.
+  # Duplicate a hash, but remove all the '_id' keys and timestamps, recursively.
+  # Be careful about cycles, which I presume would result in a stack overflow.
   #
   # @param x [Hash] has to duplicate.
   # @return [Hash] Duplicated hash sans ids.
-  def self.dup_hash_without_ids(x)
+  def self.dup_hash_selectively(x)
+    exclude = %w(_id updated_at created_at)
     if x.kind_of? Hash
-      x = Hash[x.each.collect {|k,v| [k, dup_hash_without_ids(v)] }]
-      x.delete '_id'
+      x = Hash[x.each.collect {|k,v| [k, dup_hash_selectively(v)] }]
+      exclude.each {|k| x.delete k} 
     elsif x.kind_of? Array
-      x = x.collect {|v| dup_hash_without_ids(v) }
+      x = x.collect {|v| dup_hash_selectively(v) }
     end
     x
   end
