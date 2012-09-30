@@ -23,10 +23,12 @@ module MongoPercolator
     # that it's okay to use a cached copy of the diff it one exists.
     # @param options [Hash] Options hash, which can include:
     #   :use_cached [Boolean] Whether it's okay to use a cached diff (default=false)
+    #   :against Object to compare against. If none is given, compare against 
+    #     persisted copy (which requries object to be a MongoMapper::Document).
     def diff(options={})
       raise ArgumentError, "expecting a hash" unless options.kind_of? Hash
       use_cached = options[:use_cached] || false
-      @diff = Diff.new self if @diff.nil? or !use_cached
+      @diff = Diff.new self, options[:against] if @diff.nil? or !use_cached
       @diff
     end
 

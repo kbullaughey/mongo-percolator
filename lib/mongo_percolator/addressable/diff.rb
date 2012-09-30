@@ -11,15 +11,20 @@ module MongoPercolator
 
       # Create a diff of the document against the persisted copy.
       #
-      # @param object [MongoMapper::Document] Subject of the diff.
-      def initialize(doc)
+      # @param doc [MongoMapper::Document] Subject of the diff.
+      # @param against [Hash] If provided, this will be used as if it were the 
+      #   persisted copy.
+      def initialize(doc, against = nil)
         @live = doc
-        if persisted?
-          @stored = doc.class.find(doc.id)
-          live_mongo = MongoPercolator::dup_hash_without_ids @live.to_mongo
-          persisted_mongo = MongoPercolator::dup_hash_without_ids @stored.to_mongo
-          @diff = live_mongo.diff persisted_mongo
+        if against.nil?
+          @stored = persisted? ? doc.class.find(doc.id) : {}
+        else
+          @stored = against
         end
+
+        live_mongo = MongoPercolator::dup_hash_selectively @live.to_mongo
+        persisted_mongo = MongoPercolator::dup_hash_selectively @stored.to_mongo
+        @diff = live_mongo.diff persisted_mongo
       end
 
       # Check if the value at the address has changed. When checking a 
@@ -28,10 +33,12 @@ module MongoPercolator
       # association is still nil, then it's as if the full address to that key
       # hasn't changed, even if the associated object has changed.
       #
-      # @param addr [String] Address to check.
+      # @param addr [String] Address to check (optional). If no address is given
+      #   then the whole object is used.
       # @return [Boolean] whether the persisted and live copies differ.
-      def changed?(addr)
-        return true if not persisted?
+      def changed?(addr = nil)
+        return !@diff.empty? if addr.nil?
+        addr = addr.to_s
         live_val = Addressable.fetch(addr, :target => live)
         persisted_val = Addressable.fetch(addr, :target => stored)
         live_val != persisted_val
