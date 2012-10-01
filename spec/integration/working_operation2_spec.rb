@@ -7,6 +7,7 @@ describe "MongoPercolator Node & Operation integration (2)" do
     class SumTerm
       include MongoPercolator::Node
       key :value, Float
+      key :ignored, String
     end
 
     # Set up a node class
@@ -75,6 +76,24 @@ describe "MongoPercolator Node & Operation integration (2)" do
         MongoPercolator.percolate
         @node.reload
         @node.sum.should == 4.49
+      end
+
+      it "calls recompute if a value changes" do
+        @node.should_receive(:recompute)
+        terms = @node.compute.sum_terms
+        terms[0].value = 4.99
+        terms[0].save.should be_true
+        MongoPercolator.percolate
+        @node.reload
+        @node.sum.should == 5.49
+      end
+
+      it "does not call recompute if an ignored value changes" do
+        @node.should_not_receive(:recompute)
+        terms = @node.compute.sum_terms
+        terms[0].ignored = "I changed"
+        terms[0].save.should be_true
+        MongoPercolator.percolate
       end
     end
   end
