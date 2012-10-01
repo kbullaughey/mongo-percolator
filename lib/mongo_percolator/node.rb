@@ -64,8 +64,7 @@ module MongoPercolator
         # If we (the parent) have changed in ways that are meaningful to this
         # operation, then we cause the relevant computed properties to be 
         # recomputed. 
-        dependencies = op.relevant_changes_for self
-        op._old = true unless dependencies.empty?
+        op._old = true unless op.relevant_changes_for(self).empty?
         op.save!
       end
       return true

@@ -293,12 +293,20 @@ module MongoPercolator
       raise KeyError, "node is nil" if given_node.nil?
 
       # Special variable used inside the block
-      gathered_inputs = gather
+      gathered = gather
 
       # Since I need access to the inputs from inside the emit block, I add
-      # a singleton method to get them.
-      given_node.define_singleton_method :inputs do
-        gathered_inputs
+      # a pair of singleton methods. The signular version expects to find
+      # just one item, and the plural version expects to find an array. Each
+      # function takes a parameter giving the address.
+      given_node.define_singleton_method :inputs do |addr|
+        raise ArgumentError, "Must provide address" if addr.nil?
+        gathered[addr]
+      end
+      given_node.define_singleton_method :input do |addr|
+        raise ArgumentError, "Must provide address" if addr.nil?
+        raise RuntimeErorr, "Too many matches" if gathered[addr].length > 1
+        gathered[addr].first
       end
 
       # Execute the emit block in the context of the node, and save it.

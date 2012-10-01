@@ -17,7 +17,7 @@ describe "MongoPercolator Node & Operation integration (2)" do
         depends_on 'sum_terms'
         computes(:sum) { key :sum, Float, :default => 0 }
 
-        emit { self.sum = inputs['sum_terms'].collect{|t| t.value}.sum }
+        emit { self.sum = input('sum_terms').collect{|t| t.value}.sum }
       end
       include MongoPercolator::Node
 

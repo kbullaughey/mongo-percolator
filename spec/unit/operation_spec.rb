@@ -218,10 +218,10 @@ describe "MongoPercolator::Operation unit" do
       it "can gather the data for the operation" do
         data = @op.gather
         data.should be_kind_of(Hash)
-        data['animals.farm'].should == ["pig"]
-        data['animals.wild'].should == ["sloth", "binturong"]
-        data['locations_unit_tests'].should be_kind_of(Array)
-        data['locations_unit_tests'].collect{|x| x.country}.should == %w(france russia)
+        data['animals.farm'].first.should == ["pig"]
+        data['animals.wild'].first.should == ["sloth", "binturong"]
+        data['locations_unit_tests'].first.should be_kind_of(Array)
+        data['locations_unit_tests'].first.collect{|x| x.country}.should == %w(france russia)
       end
     end
   end

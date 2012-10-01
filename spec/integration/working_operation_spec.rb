@@ -13,7 +13,7 @@ describe "MongoPercolator Node & Operation integration" do
     # Set up an operation class with a few computed properties
     class RealOp < MongoPercolator::Operation
       emit do
-        self.pets = (inputs['animals.farm'] + inputs['animals.wild']).sort
+        self.pets = (input('animals.farm') + input('animals.wild')).sort
       end
       parent :animals, :class => AnimalsIntegration
       computes(:pets) { key :pets, Array }

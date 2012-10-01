@@ -7,7 +7,7 @@ module MongoPercolator
     # Use Forwardable to create instance versions that pass through to the 
     # corresponding class methods
     extend Forwardable
-    def_delegators Addressable, :match_head, :head, :tail, :pieces
+    def_delegators Addressable, :match_head, :head, :tail, :pieces, :use_target
 
     #---------------------------
     # Instance methods for mixin
@@ -76,41 +76,77 @@ module MongoPercolator
     # Get data assuming that the dot-separated address is a valid method chain 
     # or series of hash properties.
     #
-    # @param addr [String] Address to fetch on `target`.
+    # @param addr [String] Address to fetch on `target`. Becuase segments that 
+    #   point to arrays without a given index will traverse each item in the 
+    #   array, an address can match multiple objects.
     # @param options [Hash]
     #   :target [Object] - Where to start looking for `addr`
     #   :raise_on_invalid [Boolean] - Whether or not invalid addresses should
     #     raise an error, or just return nil (default).
-    # @return [Object] Whatever the address points to.
+    #   :single [Boolean] - Only match one result. If a non-indexed array
+    #     is encountered, then an error is raised.
+    # @return [Array] Whatever the pattern matches.
     def self.fetch(addr, options = {})
-      raise ArgumentError, "expecting a hash" unless options.kind_of? Hash
+      raise ArgumentError, "Nil address" if addr.nil?
+      raise ArgumentError, "Expecting string" unless addr.kind_of? String
+      raise ArgumentError, "Expecting a hash" unless options.kind_of? Hash
       target = options[:target]
       raise ArgumentError, "No target" if target.nil?
       raise_on_invalid = options[:raise_on_invalid] || false
-      p = pieces(addr)
-      while !p.empty?
-        index = nil
-        segment = p.shift
-        raise InvalidAddress, "Invalid segment" unless valid_segment? segment
-        if array? segment
-          segment, index = array_name(segment), array_index(segment)
-        end
-        if target.kind_of? Hash
-          target = indifferent_hash_get(segment, target, options)
+
+      segment = head(addr)
+      remainder = tail(addr)
+      raise InvalidAddress, "Invalid segment" unless valid_segment? segment
+
+      # We can address particular array indicies whereby the object has an id 
+      # property and we give the id in square brackets.
+      if array? segment
+        segment, index = array_name(segment), array_index(segment)
+      end
+
+      # Handle both addressing into hashes and regular objects (via instance 
+      # methods).
+      if target.kind_of? Hash
+        target = indifferent_hash_get(segment, target, options)
+      else
+        if target.respond_to? segment
+          target = target.send segment
         else
-          if target.respond_to? segment
-            target = target.send segment
-          else
-            raise InvalidAddress, "method #{segment} missing" if raise_on_invalid
-            return nil
-          end
-        end
-        if !index.nil?
-          raise TypeError, "Expecting array" unless target.kind_of? Array
-          target = find_in_array(index, target, options)
+          raise InvalidAddress, "method #{segment} missing" if raise_on_invalid
+          target = nil
         end
       end
-      target
+
+      # We're done looking if we see a nil
+      if target.nil?
+        return options[:single] ? nil : [nil]
+      end
+      
+      # If we provided an index, we want to get just that item from the array
+      if !index.nil?
+        raise TypeError, "Expecting array" unless target.kind_of? Array
+        target = find_in_array(index, target, options)
+      end
+
+      if options[:single]
+        remainder.nil? ? target : fetch(remainder, use_target(target, options))
+      elsif remainder.nil?
+        # We're done if there is no tail.
+        [target]
+      elsif target.is_a? Array
+        # If at the end, we're left with an array, then we consider the address
+        # to match all elements and we traverse each one.
+        found = []
+        target.each{|item| found += fetch(remainder, use_target(item, options))}
+        found
+      else
+        fetch(remainder, use_target(target, options))
+      end
+    end
+
+    # Return a new options hash with the target replaced
+    def self.use_target(target, options)
+      options.merge(:target => target)
     end
 
     def self.array?(key)

@@ -35,12 +35,14 @@ module MongoPercolator
       #
       # @param addr [String] Address to check (optional). If no address is given
       #   then the whole object is used.
+      # @param options [Hash] Options appropriate for passing to fetch
       # @return [Boolean] whether the persisted and live copies differ.
-      def changed?(addr = nil)
+      def changed?(addr = nil, options = {})
+        a = Addressable
         return !@diff.empty? if addr.nil?
         addr = addr.to_s
-        live_val = Addressable.fetch(addr, :target => live)
-        persisted_val = Addressable.fetch(addr, :target => stored)
+        live_val = a.fetch(addr, a.use_target(live, options))
+        persisted_val = a.fetch(addr, a.use_target(stored, options))
         live_val != persisted_val
       end
 

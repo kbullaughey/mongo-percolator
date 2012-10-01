@@ -50,7 +50,7 @@ module MongoPercolator
 
       # Remove the id from the Many::Copy instance and from the original node.
       def delete_id(id)
-        ids_in_doc = root.fetch(full_path)
+        ids_in_doc = root.fetch(full_path, :single => true)
         raise TypeError, "Expecting array" unless ids_in_doc.kind_of? Array
         ids_in_doc.delete id
         root.save!

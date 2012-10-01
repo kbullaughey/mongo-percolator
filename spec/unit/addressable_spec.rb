@@ -125,29 +125,55 @@ describe "MongoPercolator::Addressable unit" do
     it "raises an error if options is not a hash in class method" do
       expect {
         MP::Addressable.fetch('blah', "not a hash")
-      }.to raise_error(ArgumentError, /expecting a hash/)
+      }.to raise_error(ArgumentError, /Expecting a hash/)
+    end
+  
+    it "can address the first layer as single" do
+      Layer1.new.fetch('bing', :single => true).should be_kind_of(Layer1::Layer2)
     end
   
     it "can address the first layer" do
-      Layer1.new.fetch('bing').should be_kind_of(Layer1::Layer2)
+      match = Layer1.new.fetch('bing')
+      match.length.should == 1
+      match.first.should be_kind_of(Layer1::Layer2)
     end
   
     it "can address a multi-layer address" do
-      Layer1.new.fetch('bing.bam.boom').should == "Ouch!"
+      Layer1.new.fetch('bing.bam.boom', :single => true).should == "Ouch!"
+      Layer1.new.fetch('bing.bam.boom').should == ["Ouch!"]
     end
 
-    it "can fetch from an array" do
-      res = Layer1.new.fetch('powpowpow[1]')
+    it "can fetch from an array (single)" do
+      res = Layer1.new.fetch('powpowpow[1]', :single => true)
       res.should_not be_nil
       res[:sound].should == 'eeek'
     end
 
+    it "can fetch from an array" do
+      res = Layer1.new.fetch('powpowpow[1]')
+      res.length.should == 1
+      res.first[:sound].should == 'eeek'
+    end
+
     it "can fetch into an object within an array item" do
-      Layer1.new.fetch('kazam![b].bam.boom').should == "Ouch!"
+      Layer1.new.fetch('kazam![b].bam.boom', :single => true).should == "Ouch!"
+    end
+
+    it "can fetch multiple items from an array (1)" do
+      Layer1.new.fetch('kazam!.bam.boom').should == ["Ouch!"] * 2
+    end
+
+    it "can fetch multiple items from an array (2)" do
+      Layer1.new.fetch('powpowpow.sound').should == ['eeek', 'aaaah']
+    end
+
+    it "can fetch into an object within an array item" do
+      Layer1.new.fetch('kazam![b].bam.boom').should == ["Ouch!"]
     end
 
     it "can fetch using the class method" do
-      MP::Addressable.fetch('bing.bam.boom', :target => Layer1.new).should == "Ouch!"
+      MP::Addressable.fetch('bing.bam.boom', :target => Layer1.new, 
+        :single => true).should == "Ouch!"
     end
   
     it "raises an error when fetch is not given a target" do
@@ -156,9 +182,16 @@ describe "MongoPercolator::Addressable unit" do
       }.to raise_error(ArgumentError)
     end
   
+    it "can address a hash and method chain mixture (single)" do
+      Layer1.new.fetch('bada.bing.bada.bam.bada.boom', :single => true).
+        should == 'Ouch!!!'
+      Layer1.new.fetch('bada.bing.bada.bam.bada.boom.length', :single => true).
+        should == 7
+    end
+  
     it "can address a hash and method chain mixture" do
-      Layer1.new.fetch('bada.bing.bada.bam.bada.boom').should == 'Ouch!!!'
-      Layer1.new.fetch('bada.bing.bada.bam.bada.boom.length').should == 7
+      Layer1.new.fetch('bada.bing.bada.bam.bada.boom').should == ['Ouch!!!']
+      Layer1.new.fetch('bada.bing.bada.bam.bada.boom.length').should == [7]
     end
   
     it "fails when the hash key doesn't exist" do
@@ -174,7 +207,13 @@ describe "MongoPercolator::Addressable unit" do
     end
   
     it "can address an existing key that evaluates to nil" do
-      Layer1.new.fetch('bada.nothing', :raise_on_invalid => true).should be_nil
+      Layer1.new.fetch('bada.nothing', :raise_on_invalid => true, 
+        :single => true).should be_nil
+    end
+
+    it "can address an existing key that evaluates to nil" do
+      Layer1.new.fetch('bada.nothing', :raise_on_invalid => true).
+        should == [nil]
     end
   end
 
