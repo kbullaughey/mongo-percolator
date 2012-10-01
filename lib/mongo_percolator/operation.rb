@@ -19,6 +19,7 @@ module MongoPercolator
 
     # Start the operation out as needing recomputation.
     key :_old, Boolean, :default => true
+    before_save :determine_if_old
 
     # created_at and updated_at
     timestamps!
@@ -79,16 +80,19 @@ module MongoPercolator
         # Define a reader method
         define_method reader do
           ensure_parents_exists
-          # Cache the parent in an instance variable
-          unless instance_variable_defined? ivar(reader)
-            ids = parents[reader]
-            raise TypeError, "expecting singular parent" if ids.length > 1
-            return nil if ids.first.nil?
-            result = klass.send :find, ids.first
-            raise MissingData, "Failed to find parent" if result.nil?
-            instance_variable_set ivar(reader), result
+          ids = parents[reader]
+          raise TypeError, "expecting singular parent" if ids.length > 1
+          return nil if ids.first.nil?
+          if instance_variable_defined? ivar(reader)
+            cached = instance_variable_get ivar(reader)
+            # Use cached copy if the id hasn't changed
+            return cached if cached.id == ids.first
           end
-          instance_variable_get ivar(reader)
+          result = klass.send :find, ids.first
+          raise MissingData, "Failed to find parent" if result.nil?
+          # Cache the parent in an instance variable
+          instance_variable_set ivar(reader), result
+          result
         end
 
         # Define a reader for the id of the single parent
@@ -100,15 +104,13 @@ module MongoPercolator
         # Define a writer method
         define_method "#{reader}="do |object|
           ensure_parents_exists
-          obj_id = ensure_id(object)
-          # Set the parent ids in the ParentMeta instance
-          parents[reader] = [obj_id]
+          update_ids_using_objects(reader, [object])
         end
 
         # Define a writer for the id of the single parent
         define_method "#{reader}_id=" do |id|
           ensure_parents_exists
-          parents[reader] = [id]
+          update_ids(reader, [id])
         end
       end
 
@@ -131,34 +133,40 @@ module MongoPercolator
         # Define a reader method
         define_method reader do
           ensure_parents_exists
-          # Cache the parent in an instance variable
-          unless instance_variable_defined? ivar(reader)
-            ids = parents[reader]
-            result = klass.send :find, ids
-            raise MissingData, "Failed to find parent" if 
-              result.length != parents[reader].length
-            instance_variable_set ivar(reader), result
+          ids = parents[reader]
+          if instance_variable_defined? ivar(reader)
+            cached = instance_variable_get ivar(reader)
+            # Use cached copy if the ids haven't changed
+            return cached if cached.collect{|x| x.id} == ids
           end
-          instance_variable_get ivar(reader)
+          result = klass.send :find, ids
+          raise MissingData, "Failed to find parents" if
+            result.length != ids.length
+          # I freeze the resulting array, so that people won't expect to be able
+          # to add elements. If individual elements are modified, these need to
+          # be individually saved. They will not be saved when the overall
+          # operation is saved.
+          result.freeze
+          # Cache the parent in an instance variable
+          instance_variable_set ivar(reader), result
+          result
         end
 
-        # Define a reader for ids
         define_method "#{singular(reader, options)}_ids" do
           ensure_parents_exists
           parents[reader]
         end
         
-        # Define a writer method
-        define_method "#{reader}=" do |objects|
+        # Define a writer method. Writing objects will cause them to be saved.
+        define_method "#{reader}="do |objects|
           ensure_parents_exists
-          # Set the parent ids in the ParentMeta instance
-          parents[reader] = objects.collect {|obj| ensure_id(obj)}
+          update_ids_using_objects(reader, objects)
         end
 
         # Define a writer for ids
         define_method "#{singular(reader, options)}_ids=" do |ids|
           ensure_parents_exists
-          parents[reader] = ids
+          update_ids(reader, ids)
         end
       end
     end
@@ -280,6 +288,7 @@ module MongoPercolator
     #
     # @param given_node [MongoPercolator::Node] Node to recompute.
     def recompute(given_node = nil)
+      raise MissingData, "Must belong to node" unless self.respond_to? :node
       given_node ||= node
       raise KeyError, "node is nil" if given_node.nil?
 
@@ -295,7 +304,18 @@ module MongoPercolator
       # Execute the emit block in the context of the node, and save it.
       given_node.instance_eval &emit_block
 
-      # Indicate that we're no longer old
+      # When we save an operation, if the composition has changed (i.e. the 
+      # identities of the parents) then it will be marked as old. However, if 
+      # we recompute, this doesn't matter, the operation should not be old. 
+      # However, when we save the operation after recomputation, it will be 
+      # marked as old because the composition has changed. An easy, albeit 
+      # somewhat inefficient way to get around this is to save the operation 
+      # before recomputation if the composition has changed. That way after the 
+      # computation, when we mark it as no longer old and save again, the 
+      # callback won't mark it as old again. 
+      save! if composition_changed?
+
+      # Indicate that we're no longer old and save.
       self._old = false
       save!
 
@@ -304,6 +324,7 @@ module MongoPercolator
 
     # Same as recompute() but it saves the node at the end
     def recompute!(given_node = nil)
+      raise MissingData, "Must belong to node" unless self.respond_to? :node
       given_node ||= node
       recompute(given_node)
       given_node.save!
@@ -338,7 +359,7 @@ module MongoPercolator
     # Indicate whether the operation needs recomputing (i.e. a parent has 
     # changed).
     def old?
-      _old
+      _old or composition_changed?
     end
 
     # Reach into the parent meta and get the parent ids
@@ -358,6 +379,13 @@ module MongoPercolator
       parents.parent_at(position).to_sym
     end
 
+    def composition_changed?
+      # If we don't know that we've changed, then use a diff. But exclude _old
+      # so that _old can be changed and not always causing the new object to
+      # look old.
+      ! diff.diff.reject{|key,val| key == '_old'}.empty?
+    end
+
   private
     def ivar(name)
       "@#{name}".to_sym
@@ -367,12 +395,33 @@ module MongoPercolator
       self.parents ||= ParentMeta.new
     end
 
-    def ensure_id(obj)
-      # Make sure the objects are persisted, because we need the id
-      obj.save! unless obj.persisted?
-      raise ArgumentError, "No ObjectId" if obj.id.nil?
-      obj.id
+    def update_ids_using_objects(reader, objects)
+      ids = []
+      objects.each do |object|
+        # If this object is already a parent of this operation, then if the 
+        # object has changed, saving it will cause the operation to be marked 
+        # as old. If the object is not a parent, then we mark it as old because
+        # it has a new parent. And thus saving it first isn't a problem because
+        # the operation will be marked as old anyway, here, and we don't need
+        # to rely on the the save callback to do so.
+        object.save!
+        unless parent? object
+          self._old = true
+        end
+        ids.push object.id
+      end
+      parents[reader] = ids
     end
 
+    def update_ids(reader, ids)
+      unless parents.include? reader and parents[reader] == ids
+        parents[reader] = ids
+        self._old = true
+      end
+    end
+
+    def determine_if_old
+      self._old = true if old?
+    end
   end 
 end
