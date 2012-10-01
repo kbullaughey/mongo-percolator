@@ -30,6 +30,12 @@ describe MongoPercolator::ParentMeta do
     subject.ids.should == %w(t u v)
   end
 
+  it "can test if a parent label is defined" do
+    subject['new_parent'] = %w(t u v)
+    subject.parents.include?('new_parent').should be_true
+    subject.parents.include?('uncle').should be_false
+  end
+
   it "raises an error if meta isn't a hash" do
     expect {
       MongoPercolator::ParentMeta.new :meta => 1
@@ -112,6 +118,13 @@ describe MongoPercolator::ParentMeta do
       expect { 
         @pm['newbie'] = %w(x y z)
       }.to raise_error()
+    end
+
+    it "can produce a diff" do
+      old = @pm.to_mongo
+      @pm.diff(:against => old).changed?.should be_false
+      @pm['p1'] << "v"
+      @pm.diff(:against => old).changed?.should be_true
     end
 
     describe "MongoDB interaction" do

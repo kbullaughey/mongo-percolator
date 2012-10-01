@@ -191,6 +191,14 @@ describe "MongoPercolator Node & Operation integration" do
           @node.reload
           @node.real_op.old?.should be_true
         end
+
+        it "should be marked as old when the identity of the parent changes" do
+          @node.real_op.old?.should be_false
+          new_animals = AnimalsIntegration.create :farm => ['sheep']
+          new_animals.should_not be_nil
+          @node.real_op.animals = new_animals
+          @node.real_op.old?.should be_true
+        end
     
         it "gets an updated computed property when the parent is changed" do
           @animals.farm = ['hog']

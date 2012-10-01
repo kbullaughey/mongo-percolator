@@ -122,13 +122,17 @@ describe "MongoPercolator::Operation unit" do
     it "responds to the parent readers" do
       op = RealOpUnit.new
       op.should respond_to(:animals)
+      op.should respond_to(:animals_id)
       op.should respond_to(:locations_unit_tests)
+      op.should respond_to(:locations_unit_test_ids)
     end
 
     it "responds to the parent writers" do
       op = RealOpUnit.new
       op.should respond_to(:animals=)
+      op.should respond_to(:animals_id=)
       op.should respond_to(:locations_unit_tests=)
+      op.should respond_to(:locations_unit_test_ids=)
     end
 
     it "cannot assign directly to parents" do
@@ -155,12 +159,48 @@ describe "MongoPercolator::Operation unit" do
       op.parent_ids.should == ["a"]
     end
 
+    it "cannot be recomputed when not attached to a node" do
+      op = RealOpUnit.new
+      op.animals_id = "a"
+      expect {
+        op.recompute!
+      }.to raise_error(MongoPercolator::MissingData, /node/)
+    end
+
     context "has parents" do
       before :each do
         @p1 = AnimalsUnitTest.new(:wild => %w(sloth binturong), :farm => ["pig"])
         @p2s = [LocationsUnitTest.new(:country => 'france'), 
           LocationsUnitTest.new(:country => 'russia')]
+        p2_ids = @p2s.collect{|x| x.id}
         @op = RealOpUnit.new :animals => @p1, :locations_unit_tests => @p2s
+      end
+
+      it "can't modify the array returned by the plural reader" do
+        @op.save.should be_true
+        array = @op.locations_unit_tests
+        array.frozen?.should be_true
+        expect {
+          array << LocationsUnitTest.new()
+        }.to raise_error(RuntimeError)
+      end
+
+      it "can tell when a parent has been added" do
+        @op.save.should be_true
+        @op.diff.changed?.should be_false
+        new_loc = LocationsUnitTest.create(:country => 'taiwan')
+        @op.locations_unit_test_ids << new_loc.id
+        @op.diff.changed?.should be_true
+        @op.old?.should be_true
+      end
+
+      it "if an old object is marked not old, then it doesn't think its old" do
+        @op._old = true
+        @op.save.should be_true
+        @op.old?.should be_true
+        @op._old = false
+        @op.diff.changed?('_old').should be_true
+        @op.old?.should be_false
       end
 
       it "should know the parent is a parent" do

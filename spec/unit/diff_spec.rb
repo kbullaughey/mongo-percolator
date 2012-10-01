@@ -14,15 +14,58 @@ describe MongoPercolator::Addressable::Diff do
       one :queen
       key :bee_census, Integer
     end
+
+    # A class that acts like a document but is not itself a document.
+    class Nest
+      attr_accessor :queen, :species
+
+      def self.to_mongo(val)
+        unless val.is_a? self
+          val = from_mongo(val)
+        end
+        {:queen => val.queen, :species => val.species}
+      end
+
+      def self.from_mongo(val)
+        return val if val.is_a?(self)
+        new_val = self.new
+        new_val.queen = val['queen']
+        new_val.species = val['species']
+        new_val
+      end
+    end
   end
 
   before :each do
     Hive.remove
-    @hive = Hive.new :bee_census => 1_000_000
+  end
+
+  context "a mongoable, but non-persisted object" do
+    before :each do
+      @nest = Nest.new
+      @nest.queen = "sue"
+      @nest.species = "termite"
+    end
+
+    it "knows that when compared against itself it hasn't changed" do
+      diff = MP::Addressable::Diff.new @nest, @nest.to_mongo
+      diff.changed?.should be_false
+    end
+
+    it "knows when it has changed" do
+      old = @nest.to_mongo
+      @nest.queen = "bob"
+      diff = MP::Addressable::Diff.new @nest, old
+      diff.changed?('queen').should be_true
+      diff.changed?.should be_true
+      diff.changed?(:species).should be_false
+      diff.changed?('species').should be_false
+    end
   end
 
   context "an unpersisted object" do
     before :each do
+      @hive = Hive.new :bee_census => 1_000_000
       @diff = MP::Addressable::Diff.new @hive
     end
 
@@ -34,13 +77,18 @@ describe MongoPercolator::Addressable::Diff do
       @diff.persisted?.should be_false
     end
 
-    it "knows all addresses of an unpersisted object have changed" do
-      @diff.changed?('not a real address').should be_true
+    it "knows non-existant addresses of an unpersisted object haven't changed" do
+      @diff.changed?('not_a_real_address').should be_false
+    end
+
+    it "knows the object as a whole has changed" do
+      @diff.changed?.should be_true
     end
   end
 
   context "a persisted object" do
     before :each do
+      @hive = Hive.new :bee_census => 1_000_000
       @hive.save!
       @diff = MP::Addressable::Diff.new @hive
     end
@@ -53,7 +101,7 @@ describe MongoPercolator::Addressable::Diff do
       @diff.changed?('bee_census').should be_false
     end
 
-    it "knows non-existant properties haven't changed" do
+    it "knows a non-existant property hasn't changed" do
       @diff.changed?('oogabooga').should be_false
     end
 

@@ -26,12 +26,17 @@ describe "MongoPercolator::Addressable integration" do
 
   describe "changed?" do
     before :each do
-      @life = Life.new
+      @life = Life.new :name => "Simon"
     end
 
     context "unpersisted" do
       it "knows an unpersisted object has changed" do
         @life.diff.changed?('name').should be_true
+      end
+
+      it "can be compared against a given object" do
+        @life.diff(:against => {:name => "Simon"}).changed?('name').should be_false
+        @life.diff(:against => {:name => "Says"}).changed?('name').should be_true
       end
     end
 
