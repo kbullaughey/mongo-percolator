@@ -324,10 +324,14 @@ module MongoPercolator
       save! if composition_changed?
 
       # Indicate that we're no longer old and save.
-      self._old = false
+      not_old
       save!
 
       nil
+    end
+
+    def not_old
+      self._old = false
     end
 
     # Same as recompute() but it saves the node at the end

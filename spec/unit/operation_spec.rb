@@ -167,6 +167,14 @@ describe "MongoPercolator::Operation unit" do
       }.to raise_error(MongoPercolator::MissingData, /node/)
     end
 
+    it "can be marked not old" do
+      op = RealOpUnit.new
+      op.save
+      op.old?.should be_true
+      op.not_old
+      op.old?.should be_false
+    end
+
     context "has parents" do
       before :each do
         @p1 = AnimalsUnitTest.new(:wild => %w(sloth binturong), :farm => ["pig"])
@@ -221,7 +229,8 @@ describe "MongoPercolator::Operation unit" do
         data['animals.farm'].first.should == ["pig"]
         data['animals.wild'].first.should == ["sloth", "binturong"]
         data['locations_unit_tests'].first.should be_kind_of(Array)
-        data['locations_unit_tests'].first.collect{|x| x.country}.should == %w(france russia)
+        data['locations_unit_tests'].first.collect{|x| x.country}.
+          should == %w(france russia)
       end
     end
   end
