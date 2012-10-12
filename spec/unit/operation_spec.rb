@@ -20,8 +20,8 @@ describe "MongoPercolator::Operation unit" do
     # Set up a derived class with a few computed properties
     class RealOpUnit < MongoPercolator::Operation
       emit {}
-      parent :animals, :class => AnimalsUnitTest
-      parents :locations_unit_tests
+      declare_parent :animals, :class => AnimalsUnitTest
+      declare_parents :locations_unit_tests
       computes(:pets) { key :pets, Array }
       computes(:countries) { key :countries, Array }
       depends_on 'animals.farm'
@@ -50,7 +50,7 @@ describe "MongoPercolator::Operation unit" do
 
     it "#parent" do
       expect {
-        MongoPercolator::Operation.parent :blah
+        MongoPercolator::Operation.declare_parent :blah
       }.to raise_error(RuntimeError, /subclass/)
     end
 
