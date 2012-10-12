@@ -19,7 +19,7 @@ describe "Diffs on operation parents" do
     class Nest1
       class Op < MongoPercolator::Operation
         emit {}
-        parent :queen
+        declare_parent :queen
         depends_on 'queen.description.name'
       end
       include MongoPercolator::Node
@@ -29,7 +29,7 @@ describe "Diffs on operation parents" do
     class Nest2
       class Op < MongoPercolator::Operation
         emit {}
-        parent :queen
+        declare_parent :queen
         depends_on 'queen.description.body_segments.triats.color'
       end
       include MongoPercolator::Node

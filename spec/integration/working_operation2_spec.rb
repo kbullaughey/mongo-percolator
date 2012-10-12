@@ -13,7 +13,7 @@ describe "MongoPercolator Node & Operation integration (2)" do
     # Set up a node class
     class Summation
       class ComputeSum < MongoPercolator::Operation
-        parents :sum_terms
+        declare_parents :sum_terms
         depends_on 'sum_terms'
         computes(:sum) { key :sum, Float, :default => 0 }
 
