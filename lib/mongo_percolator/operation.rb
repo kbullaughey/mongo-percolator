@@ -371,7 +371,9 @@ module MongoPercolator
     # Indicate whether the operation needs recomputing (i.e. a parent has 
     # changed).
     def old?
-      _old or composition_changed?
+      # For a new object (not persisted) we don't worry about whether the 
+      # composition has changed, because of course it has
+      _old or (persisted? and composition_changed?)
     end
 
     # Reach into the parent meta and get the parent ids

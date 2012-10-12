@@ -114,6 +114,14 @@ describe "MongoPercolator::Operation unit" do
       expect { RealOpUnit.finalize }.to_not raise_error
     end
 
+    it "can doesn't need to look old upon creation" do
+      op = RealOpUnit.new
+      op.animals_id = "a"
+      op.not_old
+      op.composition_changed?.should be_true
+      op.old?.should be_false
+    end
+
     it "should have its computed properties" do
       RealOpUnit.computed_properties.should include(:pets)
       RealOpUnit.computed_properties.should include(:countries)
