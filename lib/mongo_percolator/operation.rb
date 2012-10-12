@@ -22,7 +22,7 @@ module MongoPercolator
     before_save :determine_if_old
 
     # created_at and updated_at
-    timestamps!
+#    timestamps!
 
     # These domain-specific langauge methods are to be used in specifying the 
     # operation definition that inherits from this class.
