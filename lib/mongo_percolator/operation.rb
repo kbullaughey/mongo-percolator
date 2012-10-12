@@ -69,7 +69,7 @@ module MongoPercolator
       #   reader method name if :class => ClassName is given.
       # @param options [Hash] An optional options hash:
       #   :class [Class] - The class of the parent if not inferrable from label.
-      def parent(reader, options={})
+      def declare_parent(reader, options={})
         ensure_is_subclass
         klass = guess_class(reader, options)
 
@@ -121,7 +121,7 @@ module MongoPercolator
       #   :class [Class] - The class of the parent if not inferrable from label.
       #   :no_singularize [Boolean] - Don't singularize when guessing the
       #     class name
-      def parents(reader, options={})
+      def declare_parents(reader, options={})
         ensure_is_subclass
         klass = guess_class(reader, options)
 

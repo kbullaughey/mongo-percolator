@@ -15,7 +15,7 @@ describe "MongoPercolator Node & Operation integration" do
       emit do
         self.pets = (inputs['animals.farm'] + inputs['animals.wild']).sort
       end
-      parent :animals, :class => AnimalsIntegration
+      declare_parent :animals, :class => AnimalsIntegration
       computes(:pets) { key :pets, Array }
       computes(:address)
       depends_on 'animals.farm'
