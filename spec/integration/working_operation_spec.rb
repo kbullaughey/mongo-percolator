@@ -10,14 +10,12 @@ describe "MongoPercolator Node & Operation integration" do
       key :imaginary, Array
     end
 
-    # Set up an operation class with a few computed properties
+    # Set up an operation class
     class RealOp < MongoPercolator::Operation
       emit do
         self.pets = (input('animals.farm') + input('animals.wild')).sort
       end
       declare_parent :animals, :class => AnimalsIntegration
-      computes(:pets) { key :pets, Array }
-      computes(:address)
       depends_on 'animals.farm'
       depends_on 'animals.wild'
     end
@@ -26,6 +24,7 @@ describe "MongoPercolator Node & Operation integration" do
     class SomeNode
       include MongoPercolator::Node
       operation :real_op, RealOp
+      key :pets, Array
     end
   end
 
@@ -54,15 +53,6 @@ describe "MongoPercolator Node & Operation integration" do
     it "can access the parent using the reader" do
       @op.animals = @animals
       @op.animals.should == @animals
-    end
-
-    it "knows about its computed property" do
-      RealOp.computed_properties.should include(:pets)
-    end
-
-    it "knows a computed property lacks a block" do
-      RealOp.computed_properties.should include(:address)
-      RealOp.computed_properties[:address].should be_nil
     end
 
     it "has a one association" do
@@ -135,10 +125,6 @@ describe "MongoPercolator Node & Operation integration" do
       @node.should respond_to(:real_op)
     end
     
-    it "has the keys associated with computed properties" do
-      @node.should respond_to(:pets)
-    end
-
     context "has an op associated" do
       before :each do
         @node.real_op = @op
@@ -153,7 +139,7 @@ describe "MongoPercolator Node & Operation integration" do
         @op.node.should be_kind_of(SomeNode)
       end
   
-      it "can computed computed properties on demand" do
+      it "can compute computed properties on demand" do
         @node.pets.should == []
         @op.recompute!
         @node.reload

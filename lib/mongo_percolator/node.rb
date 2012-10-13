@@ -19,12 +19,6 @@ module MongoPercolator
         # Declare the other direction of the association
         klass.attach self
 
-        # Invoke the blocks accompanying computed properties. I execute the
-        # block in our own context using instance_eval.
-        klass.computed_properties.values.each do |block|
-          instance_eval &block unless block.nil?
-        end
-
         klass.finalize
       end
     end
@@ -54,8 +48,7 @@ module MongoPercolator
 
     # Check to see if any other nodes depend on this one and if so, cause them 
     # to update. This is usually invoked as a before_save callback. Currently, 
-    # it's only when a parent is saved that downstream computed properties will
-    # get updated.
+    # it's only when a parent is saved that downstream nodes will get updated.
     def propagate
       # If not saved, then we can't have anything else that depends on us.
       return true if not persisted?

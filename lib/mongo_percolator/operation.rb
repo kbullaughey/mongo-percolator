@@ -22,7 +22,7 @@ module MongoPercolator
     before_save :determine_if_old
 
     # created_at and updated_at
-#    timestamps!
+    timestamps!
 
     # These domain-specific langauge methods are to be used in specifying the 
     # operation definition that inherits from this class.
@@ -35,26 +35,6 @@ module MongoPercolator
         raise ArgumentError, "Emit block takes no args" unless block.arity == 0
         raise Collision, "emit already called" unless @emit.nil?
         @emit = block
-      end
-
-      # Adds a computed property. It takes a block, which should define a property
-      # by the same name using any of the standard MongoMapper means, such as key,
-      # one, many, etc. The block is executed in the context of the node that the
-      # operation part of.
-      #
-      # A block is not required. For example, if one wants to define the keys in
-      # A parent class from which nodes with differing operations descend, this
-      # can be done in the parent class and then a block is not needed. However,
-      # be sure that the property passed to computes() matches the name of the
-      # key or association.
-      #
-      # @param property [Symbol] Name of computed property
-      # @param &body [Block] A block defining the key or association for the 
-      #   computed property (optional)
-      def computes(property, &body)
-        ensure_is_subclass
-        @computed_properties ||= {}
-        @computed_properties[property.to_sym] = body
       end
 
       # Adds a dependency
@@ -195,12 +175,6 @@ module MongoPercolator
         klass
       end
 
-      # Return the list of properties that are computed by this operation
-      def computed_properties
-        ensure_is_subclass
-        @computed_properties || {}
-      end
-
       # Return the set of dependencies
       def dependencies
         ensure_is_subclass
@@ -218,14 +192,6 @@ module MongoPercolator
       def parent_labels
         ensure_is_subclass
         @parent_labels
-      end
-
-      # Indicate whether the property is a computed property.
-      #
-      # @param property [Symbol] Name of property.
-      def computed_property?(property)
-        ensure_is_subclass
-        computed_properties.include? property.to_sym
       end
 
       # This is called when the operation is declared on a node. It performs
@@ -363,11 +329,6 @@ module MongoPercolator
     # @return [Boolean]
     def parent?(object)
       parent_ids.include? object.id
-    end
-
-    # Instance verion of Operation.computed property
-    def computed_property?(property)
-      self.class.computed_property? property
     end
 
     # Indicate whether the operation needs recomputing (i.e. a parent has 

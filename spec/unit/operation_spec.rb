@@ -22,8 +22,6 @@ describe "MongoPercolator::Operation unit" do
       emit {}
       declare_parent :animals, :class => AnimalsUnitTest
       declare_parents :locations_unit_tests
-      computes(:pets) { key :pets, Array }
-      computes(:countries) { key :countries, Array }
       depends_on 'animals.farm'
       depends_on 'animals.wild'
       depends_on 'locations_unit_tests.country'
@@ -42,15 +40,15 @@ describe "MongoPercolator::Operation unit" do
   end
 
   describe "DSL is limited to subclasses" do
-    it "#computes" do
-      expect {
-        MongoPercolator::Operation.computes :blah
-      }.to raise_error(RuntimeError, /subclass/)
-    end
-
     it "#parent" do
       expect {
         MongoPercolator::Operation.declare_parent :blah
+      }.to raise_error(RuntimeError, /subclass/)
+    end
+
+    it "#parents" do
+      expect {
+        MongoPercolator::Operation.declare_parents :blah
       }.to raise_error(RuntimeError, /subclass/)
     end
 
@@ -98,10 +96,6 @@ describe "MongoPercolator::Operation unit" do
   end
 
   describe "NoOp" do
-    it "shouldn't have any computed properties" do
-      NoOp.computed_properties.should == {}
-    end
-
     it "finalize fails without emit block" do
       expect {
         NoOp.finalize
@@ -130,11 +124,6 @@ describe "MongoPercolator::Operation unit" do
       op.not_old
       op.composition_changed?.should be_true
       op.old?.should be_false
-    end
-
-    it "should have its computed properties" do
-      RealOpUnit.computed_properties.should include(:pets)
-      RealOpUnit.computed_properties.should include(:countries)
     end
 
     it "responds to the parent readers" do
