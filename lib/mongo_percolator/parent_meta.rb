@@ -10,11 +10,7 @@ module MongoPercolator
         # raised.
         return nil if val.nil?
         val = self.from_mongo(val) unless val.is_a?(self)
-        mongo = {'ids' => val.ids, 'meta' => {}}
-        val.parents.each.collect do |p,pids|
-          mongo['meta'][p] = pids.length
-        end
-        mongo
+        {'ids' => val.ids, 'meta' => val.meta}
       end
 
       def from_mongo(val)
@@ -75,6 +71,10 @@ module MongoPercolator
        flat_list +=  @parents[parent]
       end
       flat_list
+    end
+
+    def meta
+      Hash[parents.each.collect {|p,pids| [p, pids.length] }]
     end
 
     # Get the ids for the given parent

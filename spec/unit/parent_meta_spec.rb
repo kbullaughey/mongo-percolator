@@ -122,9 +122,10 @@ describe MongoPercolator::ParentMeta do
 
     it "can produce a diff" do
       old = @pm.to_mongo
-      @pm.diff(:against => old).changed?.should be_false
+      properties = %w(ids meta)
+      @pm.diff(:against => old).changed?(properties).should be_false
       @pm['p1'] << "v"
-      @pm.diff(:against => old).changed?.should be_true
+      @pm.diff(:against => old).changed?(properties).should be_true
     end
 
     describe "MongoDB interaction" do

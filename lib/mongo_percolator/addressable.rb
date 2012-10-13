@@ -96,7 +96,8 @@ module MongoPercolator
 
       segment = head(addr)
       remainder = tail(addr)
-      raise InvalidAddress, "Invalid segment" unless valid_segment? segment
+      raise InvalidAddress, "Invalid segment #{segment}" unless 
+        valid_segment? segment
 
       # We can address particular array indicies whereby the object has an id 
       # property and we give the id in square brackets.

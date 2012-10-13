@@ -18,21 +18,6 @@ describe MongoPercolator::Addressable::Diff do
     # A class that acts like a document but is not itself a document.
     class Nest
       attr_accessor :queen, :species
-
-      def self.to_mongo(val)
-        unless val.is_a? self
-          val = from_mongo(val)
-        end
-        {:queen => val.queen, :species => val.species}
-      end
-
-      def self.from_mongo(val)
-        return val if val.is_a?(self)
-        new_val = self.new
-        new_val.queen = val['queen']
-        new_val.species = val['species']
-        new_val
-      end
     end
   end
 
@@ -48,17 +33,15 @@ describe MongoPercolator::Addressable::Diff do
     end
 
     it "knows that when compared against itself it hasn't changed" do
-      diff = MP::Addressable::Diff.new @nest, @nest.to_mongo
-      diff.changed?.should be_false
+      diff = MP::Addressable::Diff.new @nest, @nest
+      diff.changed?(%w(queen species)).should be_false
     end
 
     it "knows when it has changed" do
-      old = @nest.to_mongo
+      old = @nest.dup
       @nest.queen = "bob"
       diff = MP::Addressable::Diff.new @nest, old
       diff.changed?('queen').should be_true
-      diff.changed?.should be_true
-      diff.changed?(:species).should be_false
       diff.changed?('species').should be_false
     end
   end
@@ -82,7 +65,7 @@ describe MongoPercolator::Addressable::Diff do
     end
 
     it "knows the object as a whole has changed" do
-      @diff.changed?.should be_true
+      @diff.changed?(%w(queen.weight bee_census)).should be_true
     end
   end
 

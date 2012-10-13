@@ -7,7 +7,7 @@ module MongoPercolator
     # practice, this is unimportant because only persisted objects are likely
     # to be queried for changes as they're found by ID in the graph.
     class Diff
-      attr_reader :diff, :live, :stored
+      attr_reader :live, :stored
 
       # Create a diff of the document against the persisted copy.
       #
@@ -21,10 +21,6 @@ module MongoPercolator
         else
           @stored = against
         end
-
-        live_mongo = MongoPercolator::dup_hash_selectively @live.to_mongo
-        persisted_mongo = MongoPercolator::dup_hash_selectively @stored.to_mongo
-        @diff = live_mongo.diff persisted_mongo
       end
 
       # Check if the value at the address has changed. When checking a 
@@ -33,16 +29,19 @@ module MongoPercolator
       # association is still nil, then it's as if the full address to that key
       # hasn't changed, even if the associated object has changed.
       #
-      # @param addr [String] Address to check (optional). If no address is given
-      #   then the whole object is used.
+      # @param addr [String|Enumerable] Address(es) to check. If no address is given
+      #   then the addresses returned by dependencies are used. If this method
+      #   doesn't exist, then an error is raised.
       # @param options [Hash] Options appropriate for passing to fetch
       # @return [Boolean] whether the persisted and live copies differ.
-      def changed?(addr = nil, options = {})
-        a = Addressable
-        return !@diff.empty? if addr.nil?
+      def changed?(addr, options = {})
+        if addr.kind_of? Enumerable
+          return addr.select { |a| changed? a, options }.length > 0
+        end
+        raise ArgumentError, "Nil address" if addr.nil?
         addr = addr.to_s
-        live_val = a.fetch(addr, a.use_target(live, options))
-        persisted_val = a.fetch(addr, a.use_target(stored, options))
+        live_val = Addressable.fetch(addr, Addressable.use_target(live, options))
+        persisted_val = Addressable.fetch(addr, Addressable.use_target(stored, options))
         live_val != persisted_val
       end
 

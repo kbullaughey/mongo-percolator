@@ -203,10 +203,10 @@ describe "MongoPercolator::Operation unit" do
 
       it "can tell when a parent has been added" do
         @op.save.should be_true
-        @op.diff.changed?.should be_false
+        @op.diff.changed?(@op.dependencies).should be_false
         new_loc = LocationsUnitTest.create(:country => 'taiwan')
         @op.locations_unit_test_ids << new_loc.id
-        @op.diff.changed?.should be_true
+        @op.diff.changed?(@op.dependencies).should be_true
         @op.old?.should be_true
       end
 

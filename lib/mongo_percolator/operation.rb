@@ -397,7 +397,8 @@ module MongoPercolator
       # If we don't know that we've changed, then use a diff. But exclude _old
       # so that _old can be changed and not always causing the new object to
       # look old.
-      ! diff.diff.reject{|key,val| key == '_old'}.empty?
+      properties = %w(parents.ids parents.meta node_id)
+      properties.select{|prop| diff.changed? prop}.length > 0
     end
 
   private
