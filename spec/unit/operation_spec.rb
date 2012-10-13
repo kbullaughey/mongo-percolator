@@ -26,7 +26,7 @@ describe "MongoPercolator::Operation unit" do
       computes(:countries) { key :countries, Array }
       depends_on 'animals.farm'
       depends_on 'animals.wild'
-      depends_on 'locations_unit_tests'
+      depends_on 'locations_unit_tests.country'
     end
 
     # Set up another derived class that isn't inserted into a node and thus
@@ -107,6 +107,16 @@ describe "MongoPercolator::Operation unit" do
         NoOp.finalize
       }.to raise_error(NotImplementedError, /emit/)
     end
+  end
+
+  it "raises an error if a dependency doesn't reach into a parent" do
+    class InvalidOp1 < MongoPercolator::Operation
+      emit {}
+      declare_parent :animals, :class => AnimalsUnitTest
+    end
+    expect {
+      InvalidOp1.depends_on 'animals'
+    }.to raise_error(ArgumentError, /reach into parent/)
   end
 
   describe "RealOpUnit" do
@@ -236,9 +246,8 @@ describe "MongoPercolator::Operation unit" do
         data.should be_kind_of(Hash)
         data['animals.farm'].first.should == ["pig"]
         data['animals.wild'].first.should == ["sloth", "binturong"]
-        data['locations_unit_tests'].first.should be_kind_of(Array)
-        data['locations_unit_tests'].first.collect{|x| x.country}.
-          should == %w(france russia)
+        data['locations_unit_tests.country'].should be_kind_of(Array)
+        data['locations_unit_tests.country'].should == %w(france russia)
       end
     end
   end

@@ -62,6 +62,8 @@ module MongoPercolator
       #   needed for emit()
       def depends_on(path)
         ensure_is_subclass
+        raise ArgumentError, "Path must reach into parent(s)" unless 
+          path.include? "."
         dependencies.add path
       end
 
