@@ -384,8 +384,10 @@ module MongoPercolator
         # it has a new parent. And thus saving it first isn't a problem because
         # the operation will be marked as old anyway, here, and we don't need
         # to rely on the the save callback to do so.
-        object.save!
-        puts "saving parent during asignment"
+        unless object.persisted?
+          object.save!
+          puts "saving parent during asignment"
+        end
         unless parent? object
           self._old = true
         end
