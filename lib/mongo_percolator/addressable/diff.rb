@@ -17,6 +17,7 @@ module MongoPercolator
       def initialize(doc, against = nil)
         @live = doc
         if against.nil?
+          puts "Creating diff #{__LINE__}"
           @stored = persisted? ? doc.class.find(doc.id) : {}
         else
           @stored = against

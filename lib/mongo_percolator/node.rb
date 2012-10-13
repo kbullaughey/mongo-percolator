@@ -54,6 +54,7 @@ module MongoPercolator
       return true if not persisted?
 
       MongoPercolator::Operation.where('parents.ids' => id).find_each do |op|
+        puts "propagate op #{op.id} for node #{id}"
         # If we (the parent) have changed in ways that are meaningful to this
         # operation, then we cause the relevant computed properties to be 
         # recomputed. 

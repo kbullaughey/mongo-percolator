@@ -385,6 +385,7 @@ module MongoPercolator
         # the operation will be marked as old anyway, here, and we don't need
         # to rely on the the save callback to do so.
         object.save!
+        puts "saving parent during asignment"
         unless parent? object
           self._old = true
         end
