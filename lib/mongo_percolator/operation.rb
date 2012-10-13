@@ -378,19 +378,10 @@ module MongoPercolator
     def update_ids_using_objects(reader, objects)
       ids = []
       objects.each do |object|
-        # If this object is already a parent of this operation, then if the 
-        # object has changed, saving it will cause the operation to be marked 
-        # as old. If the object is not a parent, then we mark it as old because
-        # it has a new parent. And thus saving it first isn't a problem because
-        # the operation will be marked as old anyway, here, and we don't need
-        # to rely on the the save callback to do so.
-        unless object.persisted?
-          object.save!
-          puts "saving parent during asignment"
-        end
-        unless parent? object
-          self._old = true
-        end
+        # Make sure the object is persisted before we use its id.
+        object.save! unless object.persisted?
+        # If this object isn't already a parent, mark this operation as old
+        self._old = true unless parent? object
         ids.push object.id
       end
       parents[reader] = ids
