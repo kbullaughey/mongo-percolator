@@ -238,7 +238,8 @@ module MongoPercolator
       raise ArgumentError, "Not a parent" unless parent? parent
       raise ArgumentError, "No matching parent" if parent_label(parent).nil?
       deps = dependencies.select &match_head(parent_label parent)
-      deps.select { |dep| parent.diff.changed? tail(dep) }
+      parent_diff = parent.diff
+      deps.select { |dep| parent_diff.changed? tail(dep) }
     end
 
     # Provide a instance method to return the class's dependencies.
@@ -361,7 +362,8 @@ module MongoPercolator
       # so that _old can be changed and not always causing the new object to
       # look old.
       properties = %w(parents.ids parents.meta node_id)
-      properties.select{|prop| diff.changed? prop}.length > 0
+      local_diff = diff
+      properties.select{|prop| local_diff.changed? prop}.length > 0
     end
 
   private

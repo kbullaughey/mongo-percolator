@@ -20,7 +20,7 @@ end
 # before(:each) handler of integration tests that change the database state.
 def clean_db
   db = MongoMapper.database
-  collections = db.collection_names - ["system.indexes"]
+  collections = db.collection_names - ["system.indexes", "system.profile"]
   collections.each{|c| db[c].drop }
 end
 
