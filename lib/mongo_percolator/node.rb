@@ -28,6 +28,7 @@ module MongoPercolator
       # MongoMapper::Document is included.
       def setup
         before_save :propagate
+        after_destroy :propagate_destroy
       end
     end
     
@@ -58,6 +59,18 @@ module MongoPercolator
         # operation, then we cause the relevant computed properties to be 
         # recomputed. 
         op._old = true unless op.relevant_changes_for(self).empty?
+        op.save!
+      end
+      return true
+    end
+
+    def propagate_destroy
+      # Handle the case in which this node is getting destroyed
+      return unless destroyed?
+
+      MongoPercolator::Operation.where('parents.ids' => id).find_each do |op|
+        op.remove_parent id
+        op._old = true
         op.save!
       end
       return true

@@ -90,6 +90,18 @@ describe "MongoPercolator Node & Operation integration (2)" do
         @node.sum.should == 5.49
       end
 
+      it "calls recompute if a parent is destroyed" do
+        @node.sum.should == 1.0
+        @node.should_receive(:recompute)
+        terms = @node.compute.sum_terms
+        terms.first.destroy
+        MongoPercolator.percolate
+        @node.reload
+        @node.sum.should == 0.5
+      end
+
+      pending "Check what happens when a singleton parent is removed (#{__FILE__})"
+
       it "does not call recompute if an ignored value changes" do
         @node.should_not_receive(:recompute)
         terms = @node.compute.sum_terms

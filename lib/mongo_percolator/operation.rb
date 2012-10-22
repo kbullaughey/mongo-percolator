@@ -21,9 +21,6 @@ module MongoPercolator
     key :_old, Boolean, :default => true
     before_save :determine_if_old
 
-    # created_at and updated_at
-#    timestamps!
-
     # These domain-specific langauge methods are to be used in specifying the 
     # operation definition that inherits from this class.
     module DSL
@@ -355,6 +352,15 @@ module MongoPercolator
       position = parent_ids.index parent.id
       raise ArgumentError, "parent not found" if position.nil?
       parents.parent_at(position).to_sym
+    end
+
+    # Remove the parent given by parent_id. There's not guarentee that emit will
+    # do something useful if a parent is removed, that's left up to the user to
+    # determine.
+    def remove_parent(parent_id)
+      position = parent_ids.index parent_id
+      label = parents.parent_at(position)
+      parents[label].delete parent_id
     end
 
     def composition_changed?
