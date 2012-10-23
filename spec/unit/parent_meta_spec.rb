@@ -16,8 +16,8 @@ describe MongoPercolator::ParentMeta do
     subject.ids.should == []
   end
 
-  it "raises a key error if a parent doesn't exist" do
-    expect { subject['no parent'] }.to raise_error(KeyError)
+  it "return an empty array if a parent doesn't exist" do
+    subject['no parent'].should == []
   end
 
   it "raises an error if not passed a hash" do

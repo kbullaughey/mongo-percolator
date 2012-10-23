@@ -113,6 +113,7 @@ module MongoPercolator
         define_method reader do
           ensure_parents_exists
           ids = parents[reader]
+          return [] if ids == []
           if instance_variable_defined? ivar(reader)
             cached = instance_variable_get ivar(reader)
             # Use cached copy if the ids haven't changed
@@ -155,8 +156,8 @@ module MongoPercolator
         attach(target_class)
 
         # Set up some variables we'll want in our closures
-        target_label = self.to_s.underscore.sub("/", "_")
-        method_name = "#{target_label}_observing_creation".to_sym
+        label = self.to_s.underscore.sub("/", "_")
+        method_name = "#{label}_observing_creation".to_sym
         observer_class = self
 
         # In the context of the target class, we define a method that will be

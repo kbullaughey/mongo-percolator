@@ -80,7 +80,7 @@ module MongoPercolator
     # Get the ids for the given parent
     def [](parent)
       parent = parent.to_s
-      raise KeyError unless @parents.include? parent
+      return [] unless @parents.include? parent
       @parents[parent]
     end
 

@@ -171,6 +171,11 @@ describe "MongoPercolator::Operation unit" do
       RealOpUnit.parent_labels.should include(:locations_unit_tests)
     end
 
+    it "can get an empty list of parents" do
+      op = RealOpUnit.new
+      op.locations_unit_tests.should == []
+    end
+
     it "can add parent ids to a plural label" do
       op = RealOpUnit.new
       op.locations_unit_test_ids = %w(a b c)
