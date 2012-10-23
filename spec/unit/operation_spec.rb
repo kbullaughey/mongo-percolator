@@ -24,7 +24,7 @@ describe "MongoPercolator::Operation unit" do
       declare_parents :locations_unit_tests
       depends_on 'animals.farm'
       depends_on 'animals.wild'
-      depends_on 'locations_unit_tests.country'
+      depends_on 'locations_unit_tests[].country'
     end
 
     # Set up another derived class that isn't inserted into a node and thus
@@ -254,8 +254,8 @@ describe "MongoPercolator::Operation unit" do
         data.should be_kind_of(Hash)
         data['animals.farm'].first.should == ["pig"]
         data['animals.wild'].first.should == ["sloth", "binturong"]
-        data['locations_unit_tests.country'].should be_kind_of(Array)
-        data['locations_unit_tests.country'].should == %w(france russia)
+        data['locations_unit_tests[].country'].should be_kind_of(Array)
+        data['locations_unit_tests[].country'].should == %w(france russia)
       end
     end
   end

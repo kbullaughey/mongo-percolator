@@ -14,10 +14,10 @@ describe "MongoPercolator Node & Operation integration (2)" do
     class Summation
       class ComputeSum < MongoPercolator::Operation
         declare_parents :sum_terms
-        depends_on 'sum_terms.value'
+        depends_on 'sum_terms[].value'
 
         emit do
-          self.sum = inputs('sum_terms.value').sum
+          self.sum = inputs('sum_terms[].value').sum
         end
       end
       include MongoPercolator::Node

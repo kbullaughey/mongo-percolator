@@ -43,7 +43,11 @@ module MongoPercolator
     def self.match_head(h)
       h = h.to_s if h.kind_of? Symbol
       raise ArgumentError, "expecting string or symbol" unless h.kind_of? String
-      Proc.new {|addr| head(addr) == h }
+      Proc.new do |addr|
+        addr_head = head(addr)
+        addr_head = splat_label(addr_head) if splat?(addr_head)
+        addr_head == h
+      end
     end
 
     # Split on the dots
@@ -105,6 +109,14 @@ module MongoPercolator
         segment, index = array_name(segment), array_index(segment)
       end
 
+      # If a segment ends in "[]" this is a splat and we match the rest of the
+      # path to each element in the array
+      expecting_splat = false
+      if splat? segment
+        segment = splat_label segment
+        expecting_splat = true
+      end
+
       # Handle both addressing into hashes and regular objects (via instance 
       # methods).
       if target.kind_of? Hash
@@ -134,9 +146,9 @@ module MongoPercolator
       elsif remainder.nil?
         # We're done if there is no tail.
         [target]
-      elsif target.is_a? Array
-        # If at the end, we're left with an array, then we consider the address
-        # to match all elements and we traverse each one.
+      elsif target.is_a? Array and expecting_splat
+        # If we have a splat, then we consider the address to match all elements
+        # and we traverse each one.
         found = []
         target.each{|item| found += fetch(remainder, use_target(item, options))}
         found
@@ -154,6 +166,14 @@ module MongoPercolator
       !!(key =~ /[^\[\]]\[[^\]]+\]/)
     end
 
+    def self.splat?(key)
+      !!(key =~ /[^\[\]]\[\]/)
+    end
+
+    def self.splat_label(key)
+      key.sub(/\[\]$/, "")
+    end
+
     def self.array_name(key)
       key.sub(/\[.*$/, "")
     end
@@ -163,7 +183,7 @@ module MongoPercolator
     end
 
     def self.valid_segment?(key)
-      !!(key =~ /^[-A-Za-z0-9_?!]+(\[[^\]]+\])?$/)
+      !!(key =~ /^[-A-Za-z0-9_?!]+(\[[^\]]*\])?$/)
     end
 
     def self.indifferent_hash_get(key, hash, options = {})

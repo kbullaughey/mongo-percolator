@@ -115,6 +115,18 @@ describe "MongoPercolator::Addressable unit" do
     MP::Addressable.valid_segment?('arr@y[123]').should be_false
   end
 
+  it "can recognize a splat" do
+    MP::Addressable.splat?('arry[]').should be_true
+  end
+
+  it "sees a splat as a valid segment" do
+    MP::Addressable.valid_segment?('arry[]').should be_true
+  end
+
+  it "can extract the splat label" do
+    MP::Addressable.splat_label('arry[]').should == "arry"
+  end
+
   describe "fetching" do
     it "raises an error if options is not a hash" do
       expect {
@@ -160,11 +172,11 @@ describe "MongoPercolator::Addressable unit" do
     end
 
     it "can fetch multiple items from an array (1)" do
-      Layer1.new.fetch('kazam!.bam.boom').should == ["Ouch!"] * 2
+      Layer1.new.fetch('kazam![].bam.boom').should == ["Ouch!"] * 2
     end
 
     it "can fetch multiple items from an array (2)" do
-      Layer1.new.fetch('powpowpow.sound').should == ['eeek', 'aaaah']
+      Layer1.new.fetch('powpowpow[].sound').should == ['eeek', 'aaaah']
     end
 
     it "can fetch into an object within an array item" do
