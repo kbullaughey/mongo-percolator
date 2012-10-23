@@ -68,7 +68,7 @@ module MongoPercolator
             return cached if cached.id == ids.first
           end
           result = klass.send :find, ids.first
-          raise MissingData, "Failed to find parent" if result.nil?
+          raise MissingData, "Failed to find parent #{reader}" if result.nil?
           # Cache the parent in an instance variable
           instance_variable_set ivar(reader), result
           result
