@@ -31,12 +31,23 @@ describe "MongoPercolator::Operation unit" do
     # remains unfrozen.
     class RealOpUnfrozen < MongoPercolator::Operation
     end
+
+    # Set up an node & operation to test the abbreviated operation syntax
+    class NodeWithAbbreviatedSyntax
+      class Op < MongoPercolator::Operation
+        emit { self.was_run = true }
+      end
+      include MongoPercolator::Node
+      operation :op
+      key :was_run, Boolean, :default => false
+    end
   end
 
   before :each do
     RealOpUnit.remove
     LocationsUnitTest.remove
     AnimalsUnitTest.remove
+    NodeWithAbbreviatedSyntax.remove
   end
 
   describe "DSL is limited to subclasses" do
@@ -101,6 +112,14 @@ describe "MongoPercolator::Operation unit" do
         NoOp.finalize
       }.to raise_error(NotImplementedError, /emit/)
     end
+  end
+
+  it "can use the abbreviated operation syntax" do
+    node = NodeWithAbbreviatedSyntax.create!(:op => NodeWithAbbreviatedSyntax::Op)   
+    node.was_run.should be_false
+    node.op.recompute!
+    node.reload
+    node.was_run.should be_true
   end
 
   it "raises an error if a dependency doesn't reach into a parent" do

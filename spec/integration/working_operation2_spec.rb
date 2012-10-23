@@ -42,6 +42,15 @@ describe "MongoPercolator Node & Operation integration (2)" do
       @node.sum.should == 0
     end
 
+    it "can be initially computed asynchronously" do
+      @node.compute.sum_terms = [SumTerm.new(:value => 0.1), SumTerm.new(:value => 0.2)]
+      @node.compute.save.should be_true
+      @node.save.should be_true
+      MongoPercolator.percolate(2).should == 1
+      @node.reload
+      @node.sum.round(1).should == 0.3
+    end
+
     context "Two initial terms" do
       before :each do
         @node.compute.sum_terms = [SumTerm.new(:value => 0.5), SumTerm.new(:value => 0.5)]

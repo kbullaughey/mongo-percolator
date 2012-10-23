@@ -7,7 +7,8 @@ module MongoPercolator
 
     module DSL
       # Operations are a one-to-one mapping
-      def operation(label, klass)
+      def operation(label, klass=nil)
+        klass = self.const_get(label.to_s.camelize.to_sym) if klass.nil?
         raise ArgumentError, "Expecting class" unless klass.kind_of? Class
         raise ArgumentError, "Malformed label" unless 
           label =~ /^[a-z][A-Za-z0-9_?!]*$/

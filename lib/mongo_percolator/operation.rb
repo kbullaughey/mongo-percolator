@@ -148,6 +148,28 @@ module MongoPercolator
           update_ids(reader, ids)
         end
       end
+
+      # Attach this as an external observer of target_class. 
+      def observe_creation_of(target_class)
+        # Make the target instance accessible in via an association
+        attach(target_class)
+
+        # Set up some variables we'll want in our closures
+        target_label = self.to_s.underscore.sub("/", "_")
+        method_name = "#{target_label}_observing_creation".to_sym
+        observer_class = self
+
+        # In the context of the target class, we define a method that will be
+        # called when an instance of that class is created.
+        target_class.instance_eval do
+          define_method method_name do
+            # All we need to do is create a new instance of the observer 
+            # operation and set the node
+            observer_class.create!(:node => self)
+          end
+          after_create method_name
+        end
+      end
     end
 
     # These class methods are for general use and not really part of the DSL
@@ -271,7 +293,7 @@ module MongoPercolator
       end
       given_node.define_singleton_method :input do |addr|
         raise ArgumentError, "Must provide address" if addr.nil?
-        raise RuntimeErorr, "Too many matches" if gathered[addr].length > 1
+        raise RuntimeError, "Too many matches" if gathered[addr].length > 1
         gathered[addr].first
       end
 
