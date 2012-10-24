@@ -47,7 +47,7 @@ module MongoPercolator
     passes = 0
     while passes < max_passes
       found_some = false
-      Operation.where(:_old => true).sort(:updated_at).find_each do |op|
+      Operation.where(:_old => true).sort(:_id).find_each do |op|
         op.recompute!
         found_some = true
       end
