@@ -9,6 +9,11 @@ module MongoPercolator
     include MongoMapper::Document
     include Addressable
 
+    # This is faster than timestamps! and gives me one-second resolution. All
+    # I use it for is sorting.
+    key :timeid, BSON::ObjectId
+    before_save { self.timeid = BSON::ObjectId.new }
+
     # I allow there to be callbacks before, after and around the emit block 
     # invocation. Unlike the emit block itself, the callbacks are executed
     # in the context of the operation.
