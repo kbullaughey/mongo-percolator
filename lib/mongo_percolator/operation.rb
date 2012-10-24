@@ -9,6 +9,11 @@ module MongoPercolator
     include MongoMapper::Document
     include Addressable
 
+    # I allow there to be callbacks before, after and around the emit block 
+    # invocation. Unlike the emit block itself, the callbacks are executed
+    # in the context of the operation.
+    define_model_callbacks :emit
+
     # The primary job of each operation instance is to keep track of which
     # particular parent documents the operation depends on. For this purpose
     # I use a custom mongo type, ParentMeta. The parents object is accessed
@@ -169,10 +174,18 @@ module MongoPercolator
 
         # Since we don't have a 'one' association in the other direction with
         # :dependent => :destroy, we add a before_destroy callback here to 
-        # delete the observer when the target is destroyed.
+        # delete the observer when the target is destroyed. This only matters if
+        # the target is deleted before the observer has time to run, because
+        # usually the observer is destroyed automatically after emit.
         target_class.before_destroy do
-          observer_class.where(:node_id => id).first.destroy
+          target = observer_class.where(:node_id => id).first
+          target.destroy unless target.nil?
         end
+
+        # Operations observing creation only fire once and thus don't need to be
+        # kept in the database after they run. Therefore, I add an emit callback
+        # to delete the observer once its fired. 
+        after_emit { destroy }
       end
     end
 
@@ -302,7 +315,10 @@ module MongoPercolator
       end
 
       # Execute the emit block in the context of the node, and save it.
-      given_node.instance_eval &emit_block
+      run_callbacks :emit do
+        given_node.instance_eval &emit_block
+      end
+      return if destroyed?
 
       # When we save an operation, if the composition has changed (i.e. the 
       # identities of the parents) then it will be marked as old. However, if 
