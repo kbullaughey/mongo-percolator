@@ -157,18 +157,21 @@ module MongoPercolator
 
         # Set up some variables we'll want in our closures
         label = self.to_s.underscore.sub("/", "_")
-        method_name = "#{label}_observing_creation".to_sym
         observer_class = self
 
         # In the context of the target class, we define a method that will be
         # called when an instance of that class is created.
-        target_class.instance_eval do
-          define_method method_name do
-            # All we need to do is create a new instance of the observer 
-            # operation and set the node
-            observer_class.create!(:node => self)
-          end
-          after_create method_name
+        target_class.after_create do
+          # All we need to do is create a new instance of the observer 
+          # operation and set the node
+          observer_class.create!(:node => self)
+        end
+
+        # Since we don't have a 'one' association in the other direction with
+        # :dependent => :destroy, we add a before_destroy callback here to 
+        # delete the observer when the target is destroyed.
+        target_class.before_destroy do
+          observer_class.where(:node_id => id).first.destroy
         end
       end
     end

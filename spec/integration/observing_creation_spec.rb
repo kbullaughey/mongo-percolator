@@ -34,6 +34,14 @@ describe "Observing creation of a class" do
     effect.should_not be_nil
     effect.result.should == "who: Big Bird"
   end
+
+  it "destroys the observer when the node is deleted" do
+    observed = ClassObservedForCreation.create! :name => "Oscar"
+    MongoPercolator.percolate
+    ObservingCreationOfSomething.first.should_not be_nil
+    observed.destroy
+    ObservingCreationOfSomething.first.should be_nil
+  end
 end
 
 # END
