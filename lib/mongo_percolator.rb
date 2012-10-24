@@ -3,6 +3,7 @@ require 'active_support/core_ext/string/inflections'
 
 require 'mongo_mapper'
 require 'mongo_percolator/version'
+require 'mongo_percolator/summary'
 
 module MongoPercolator
   def self.whoami?
@@ -44,17 +45,18 @@ module MongoPercolator
   #   no more updates, stop.
   # @return [Integer] Actual number of passes made.
   def self.percolate(max_passes = 1)
-    passes = 0
-    while passes < max_passes
+    summary = Summary.new
+    while summary.iterations < max_passes
       found_some = false
       Operation.where(:_old => true).sort(:_id).find_each do |op|
         op.recompute!
         found_some = true
+        summary.operations += 1
       end
       break unless found_some
-      passes += 1
+      summary.iterations += 1
     end
-    passes
+    summary
   end
 end
 
