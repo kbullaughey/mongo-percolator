@@ -129,7 +129,7 @@ describe "MongoPercolator::Operation unit" do
     end
     expect {
       InvalidOp1.depends_on 'animals'
-    }.to raise_error(ArgumentError, /reach into parent/)
+    }.to raise_error(ArgumentError, /enter parent/)
   end
 
   describe "RealOpUnit" do

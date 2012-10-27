@@ -39,8 +39,9 @@ module MongoPercolator
       # functions and variables.
       def emit &block
         ensure_is_subclass
-        raise ArgumentError, "Emit block takes no args" unless block.arity == 0
-        raise Collision, "emit already called" unless @emit.nil?
+        raise ArgumentError.new("Emit block takes no args").add(to_mongo) unless
+          block.arity == 0
+        raise Collision.new("emit already called").add(to_mongo) unless @emit.nil?
         @emit = block
       end
 
@@ -49,8 +50,7 @@ module MongoPercolator
       #   needed for emit()
       def depends_on(path)
         ensure_is_subclass
-        raise ArgumentError, "Path must reach into parent(s)" unless 
-          path.include? "."
+        raise ArgumentError, "Path must enter parent(s)" unless path.include? "."
         dependencies.add path
       end
 
@@ -70,7 +70,8 @@ module MongoPercolator
         define_method reader do
           ensure_parents_exists
           ids = parents[reader]
-          raise TypeError, "expecting singular parent" if ids.length > 1
+          raise TypeError.new("expecting singular parent").add(to_mongo) if
+            ids.length > 1
           return nil if ids.first.nil?
           if instance_variable_defined? ivar(reader)
             cached = instance_variable_get ivar(reader)
@@ -78,7 +79,8 @@ module MongoPercolator
             return cached if cached.id == ids.first
           end
           result = klass.send :find, ids.first
-          raise MissingData, "Failed to find parent #{reader}" if result.nil?
+          raise MissingData.new("Failed to find parent #{reader}").add(to_mongo) if
+            result.nil?
           # Cache the parent in an instance variable
           instance_variable_set ivar(reader), result
           result
@@ -130,7 +132,7 @@ module MongoPercolator
             return cached if cached.collect{|x| x.id} == ids
           end
           result = klass.send :find, ids
-          raise MissingData, "Failed to find parents" if
+          raise MissingData.new("Failed to find parents").add(to_mongo) if
             result.length != ids.length
           # I freeze the resulting array, so that people won't expect to be able
           # to add elements. If individual elements are modified, these need to
@@ -276,8 +278,10 @@ module MongoPercolator
     #
     # @param parent [MongoMapper::Document] 
     def relevant_changes_for(parent)
-      raise ArgumentError, "Not a parent" unless parent? parent
-      raise ArgumentError, "No matching parent" if parent_label(parent).nil?
+      raise ArgumentError.new("Not a parent").add(to_mongo) unless
+        parent? parent
+      raise ArgumentError.new("No matching parent").add(to_mongo) if
+        parent_label(parent).nil?
       deps = dependencies.select &match_head(parent_label parent)
       parent_diff = parent.diff
       deps.select { |dep| parent_diff.changed? tail(dep) }
@@ -298,9 +302,10 @@ module MongoPercolator
     #
     # @param given_node [MongoPercolator::Node] Node to recompute.
     def recompute(given_node = nil)
-      raise MissingData, "Must belong to node" unless self.respond_to? :node
+      raise MissingData.new("Must belong to node").add(to_mongo) unless
+        self.respond_to? :node
       given_node ||= node
-      raise KeyError, "node is nil" if given_node.nil?
+      raise KeyError.new("node is nil").add(to_mongo) if given_node.nil?
 
       # Special variable used inside the block
       gathered = gather
@@ -310,12 +315,13 @@ module MongoPercolator
       # just one item, and the plural version expects to find an array. Each
       # function takes a parameter giving the address.
       given_node.define_singleton_method :inputs do |addr|
-        raise ArgumentError, "Must provide address" if addr.nil?
+        raise ArgumentError.new("Must provide address").add(to_mongo) if addr.nil?
         gathered[addr]
       end
       given_node.define_singleton_method :input do |addr|
-        raise ArgumentError, "Must provide address" if addr.nil?
-        raise RuntimeError, "Too many matches" if gathered[addr].length > 1
+        raise ArgumentError.new("Must provide address").add(to_mongo) if addr.nil?
+        raise RuntimeError.new("Too many matches").add(to_mongo) if
+          gathered[addr].length > 1
         gathered[addr].first
       end
 
@@ -349,7 +355,8 @@ module MongoPercolator
 
     # Same as recompute() but it saves the node at the end
     def recompute!(given_node = nil)
-      raise MissingData, "Must belong to node" unless self.respond_to? :node
+      raise MissingData.new("Must belong to node").add(to_mongo) unless
+        self.respond_to? :node
       given_node ||= node
       recompute(given_node)
       given_node.save!
@@ -397,7 +404,7 @@ module MongoPercolator
     # @return [Symbol] the label for the parent
     def parent_label(parent)
       position = parent_ids.index parent.id
-      raise ArgumentError, "parent not found" if position.nil?
+      raise ArgumentError.new("parent not found").add(to_mongo) if position.nil?
       parents.parent_at(position).to_sym
     end
 
