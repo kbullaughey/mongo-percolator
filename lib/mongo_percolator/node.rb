@@ -20,6 +20,14 @@ module MongoPercolator
         # Declare the other direction of the association
         klass.attach self
 
+        # Define a convenience method to create the operation
+        define_method "create_#{label}" do |*args|
+          arg_hash = args.first || {}
+          op = klass.new arg_hash
+          self.send "#{label}=", op
+          op.save!
+        end
+
         klass.finalize
       end
     end

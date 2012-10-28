@@ -115,7 +115,7 @@ describe "MongoPercolator::Operation unit" do
   end
 
   it "can use the abbreviated operation syntax" do
-    node = NodeWithAbbreviatedSyntax.create!(:op => NodeWithAbbreviatedSyntax::Op)   
+    node = NodeWithAbbreviatedSyntax.create!(:op => NodeWithAbbreviatedSyntax::Op.new)   
     node.was_run.should be_false
     node.op.recompute!
     node.reload
@@ -130,6 +130,15 @@ describe "MongoPercolator::Operation unit" do
     expect {
       InvalidOp1.depends_on 'animals'
     }.to raise_error(ArgumentError, /enter parent/)
+  end
+
+  it "can be created using the create_* convenience function" do
+    node = NodeWithAbbreviatedSyntax.new
+    node.create_op
+    node.was_run.should be_false
+    node.op.recompute!
+    node.reload
+    node.was_run.should be_true
   end
 
   describe "RealOpUnit" do
