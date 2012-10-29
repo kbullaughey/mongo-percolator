@@ -24,7 +24,8 @@ module MongoPercolator
         define_method "create_#{label}" do |*args|
           arg_hash = args.first || {}
           op = klass.new arg_hash
-          self.send "#{label}=", op
+          raise RuntimeError, "Node should have id" if id.nil?
+          op.node_id = id
           op.save!
         end
 
