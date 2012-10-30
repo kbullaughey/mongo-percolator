@@ -48,7 +48,7 @@ module MongoPercolator
     summary = Summary.new
     while summary.iterations < max_passes
       found_some = false
-      Operation.where(:_old => true, :_error => false).sort(:timeid).find_each do |op|
+      Operation.where(:_old => true, :_error.ne => true).sort(:timeid).find_each do |op|
         begin
           op.recompute!
         rescue StandardError => e
