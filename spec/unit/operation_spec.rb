@@ -41,6 +41,11 @@ describe "MongoPercolator::Operation unit" do
       operation :op
       key :was_run, Boolean, :default => false
     end
+    
+    class OpCantBeSaved < MongoPercolator::Operation
+      emit {}
+      key :req, String, :required => true
+    end
   end
 
   before :each do
@@ -139,6 +144,31 @@ describe "MongoPercolator::Operation unit" do
     node.op.recompute!
     node.reload
     node.was_run.should be_true
+  end
+
+  it "can be put in the error state even when save doesn't work" do
+    op = OpCantBeSaved.new :req => "has required field"
+    op.save.should be_true
+    op.old?.should be_true
+    op._error.should be_false
+    op.req = nil
+    op.save.should be_false
+    op.error!
+    op.reload
+    op._error.should be_true
+  end
+
+  it "raises an error when percolating an operation without a node" do
+    op = OpCantBeSaved.new :req => "has required field"
+    op.save.should be_true
+    begin
+      op.recompute!
+    rescue StandardError => e
+      e.extra.should_not be_nil
+      e.extra.should be_kind_of(Hash)
+    else
+      raise "Should have raised error"
+    end
   end
 
   describe "RealOpUnit" do

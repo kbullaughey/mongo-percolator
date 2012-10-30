@@ -29,6 +29,7 @@ module MongoPercolator
 
     # Start the operation out as needing recomputation.
     key :_old, Boolean, :default => true
+    key :_error, Boolean, :default => false
     before_save :determine_if_old
 
     # These domain-specific langauge methods are to be used in specifying the 
@@ -424,6 +425,12 @@ module MongoPercolator
       properties = %w(parents.ids parents.meta node_id)
       local_diff = diff
       properties.select{|prop| local_diff.changed? prop}.length > 0
+    end
+
+    # Mark the operation as having an error. This will prevent it from getting
+    # continually percolated
+    def error!
+      self.set :_error => true
     end
 
   private
