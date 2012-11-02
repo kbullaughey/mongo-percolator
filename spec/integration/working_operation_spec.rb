@@ -206,7 +206,7 @@ describe "MongoPercolator Node & Operation integration" do
         it "only takes the number of passes needed" do
           @animals.farm = ['hog']
           @animals.save
-          passes_made = MongoPercolator.percolate(10).iterations
+          passes_made = MongoPercolator.percolate.iterations
           passes_made.should == 1
         end
       end

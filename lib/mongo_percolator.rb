@@ -41,14 +41,13 @@ module MongoPercolator
 
   # Recompute everything
   # 
-  # @param max_passes [Integer] Do at most this number of passes. If there are
-  #   no more updates, stop.
   # @return [Integer] Actual number of passes made.
-  def self.percolate(max_passes = 1)
+  def self.percolate
     summary = Summary.new
-    while summary.iterations < max_passes
+    loop do
       found_some = false
-      Operation.where(:_old => true, :_error.ne => true).sort(:timeid).find_each do |op|
+      Operation.where(:_old => true, :_error.ne => true).sort(:timeid).
+          limit(100).find_each do |op|
         begin
           op.recompute!
         rescue StandardError => e
