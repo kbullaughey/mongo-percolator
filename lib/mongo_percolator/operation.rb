@@ -356,8 +356,6 @@ module MongoPercolator
 
     # Same as recompute() but it saves the node at the end
     def recompute!(given_node = nil)
-      raise MissingData.new("Must belong to node").add(to_mongo) unless
-        self.respond_to? :node
       given_node ||= node
       recompute(given_node)
       given_node.save!
