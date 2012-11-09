@@ -310,6 +310,7 @@ module MongoPercolator
 
       # Special variable used inside the block
       gathered = gather
+      deps = dependencies
 
       # Since I need access to the inputs from inside the emit block, I add
       # a pair of singleton methods. The signular version expects to find
@@ -317,10 +318,14 @@ module MongoPercolator
       # function takes a parameter giving the address.
       given_node.define_singleton_method :inputs do |addr|
         raise ArgumentError.new("Must provide address").add(to_mongo) if addr.nil?
+        raise ArgumentError.new("Invalid address").
+          add(to_mongo.merge(:address => addr)) unless deps.include?(addr)
         gathered[addr]
       end
       given_node.define_singleton_method :input do |addr|
         raise ArgumentError.new("Must provide address").add(to_mongo) if addr.nil?
+        raise ArgumentError.new("Invalid address").
+          add(to_mongo.merge(:address => addr)) unless deps.include?(addr)
         raise RuntimeError.new("Too many matches").add(to_mongo) if
           gathered[addr].length > 1
         gathered[addr].first
