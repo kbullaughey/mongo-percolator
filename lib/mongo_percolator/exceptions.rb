@@ -13,4 +13,6 @@ module MongoPercolator
   class MissingData < StandardError; end
   class Collision < StandardError; end
   class ShouldBeImpossible < StandardError; end
+  # Used when someone incorrectly uses the DSL
+  class DeclarationError < StandardError; end
 end
