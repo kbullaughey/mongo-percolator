@@ -14,18 +14,18 @@ module MongoPercolator
           label =~ /^[a-z][A-Za-z0-9_?!]*$/
 
         # Declare the first direction of the association
-        one label, :class => klass, :foreign_key => :node_id, 
-          :dependent => :destroy
+        one label, :class => klass, :as => :node, :dependent => :destroy
 
         # Declare the other direction of the association
-        klass.attach self
+        # klass.attach self
+        klass.attach
 
         # Define a convenience method to create the operation
         define_method "create_#{label}" do |*args|
           arg_hash = args.first || {}
           op = klass.new arg_hash
           raise RuntimeError, "Node should have id" if id.nil?
-          op.node_id = id
+          op.node = self
           op.save!
         end
 

@@ -166,7 +166,8 @@ module MongoPercolator
       # Attach this as an external observer of target_class. 
       def observe_creation_of(target_class)
         # Make the target instance accessible in via an association
-        attach(target_class)
+        # attach(target_class)
+        attach
 
         # Set up some variables we'll want in our closures
         label = self.to_s.underscore.sub("/", "_")
@@ -252,13 +253,9 @@ module MongoPercolator
       # Set up the belongs_to direction of the association. Since each operation 
       # can only belong to one node, we can always use the reader :node so that
       # regardless of the class, we can find the node.
-      #
-      # @param klass [Class] The class of the node.
-      def attach(klass)
+      def attach
         ensure_is_subclass
-        raise Collision, "Operation already attached" if @attached
-        @attached = true
-        belongs_to :node, :class => klass
+        belongs_to :node, :polymorphic => true
       end
 
       def ensure_is_subclass

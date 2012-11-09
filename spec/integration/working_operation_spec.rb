@@ -26,12 +26,19 @@ describe "MongoPercolator Node & Operation integration" do
       operation :real_op, RealOp
       key :pets, Array
     end
+
+    class SomeOtherNode
+      include MongoPercolator::Node
+      operation :real_op, RealOp
+      key :pets, Array
+    end
   end
 
   before :each do
     AnimalsIntegration.remove
     MongoPercolator::Operation.remove
     SomeNode.remove
+    SomeOtherNode.remove
   end
 
   describe "RealOp" do
@@ -63,13 +70,12 @@ describe "MongoPercolator Node & Operation integration" do
       RealOp.parent_labels.to_a.should == [:animals]
     end
 
-    it "cannot be added to another class" do
-      expect {
-        class SomeOtherNode
-          include MongoPercolator::Node
-          operation :real_op, RealOp
-        end
-      }.to raise_error(MongoPercolator::Collision)
+    it "operations can be added to another class" do
+      node = SomeOtherNode.create!
+      node.create_real_op :animals => AnimalsIntegration.new(:wild => ['baboon'])
+      node.real_op.recompute!
+      node.reload
+      node.pets.should include('baboon')
     end
 
     it "fails when passed a malformed label" do
@@ -128,7 +134,7 @@ describe "MongoPercolator Node & Operation integration" do
     context "has an op associated" do
       before :each do
         @node.real_op = @op
-        @node.save
+        @node.save!
       end
 
       it "has a real op associated" do
