@@ -527,8 +527,11 @@ module MongoPercolator
         # Make sure we've reserved this node for computation
         raise RuntimeError.new("Operation not held").add(to_mongo) unless held?
 
-        # Only use the associated node if given_node is nil. If both exist, then
-        # make sure their ids match.
+        # Only use the associated node if given_node is nil. I found this was 
+        # important when an operation on the node invokes another operation on 
+        # the node. In this case, the first operation would save the node again,
+        # overwriting the changes made be the second operation. If both exist,
+        # then make sure their ids match. 
         if respond_to?(:node) and !node.nil?
           raise ArgumentError.new("Node doesn't match").add(to_mongo) if 
             !given_node.nil? and node.id != given_node.id
@@ -564,6 +567,7 @@ module MongoPercolator
         run_callbacks(:emit) { given_node.instance_eval &emit_block }
         return if destroyed?
   
+        binding.pry
         given_node.save!
         release!
       rescue StandardError => e
