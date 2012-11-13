@@ -567,7 +567,6 @@ module MongoPercolator
         run_callbacks(:emit) { given_node.instance_eval &emit_block }
         return if destroyed?
   
-        binding.pry
         given_node.save!
         release!
       rescue StandardError => e
