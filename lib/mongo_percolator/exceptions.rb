@@ -15,4 +15,6 @@ module MongoPercolator
   class ShouldBeImpossible < StandardError; end
   # Used when someone incorrectly uses the DSL
   class DeclarationError < StandardError; end
+  class FetchFailed < StandardError; end
+  class StateError < StandardError; end
 end

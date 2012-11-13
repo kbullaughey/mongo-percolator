@@ -2,6 +2,7 @@ require 'active_support/concern'
 require 'active_support/core_ext/string/inflections'
 
 require 'mongo_mapper'
+require 'state_machine'
 require 'mongo_percolator/version'
 require 'mongo_percolator/summary'
 
@@ -45,25 +46,17 @@ module MongoPercolator
   def self.percolate
     summary = Summary.new
     loop do
-      found_some = false
-      Operation.where(:_old => true, :_error.ne => true).sort(:timeid).
-          limit(100).find_each do |op|
-        begin
-          op.recompute!
-        rescue StandardError => e
-          op.error!
-          raise e
-        end
-        found_some = true
-        summary.operations += 1
-      end
-      break unless found_some
-      summary.iterations += 1
+      op = Operation.find_and_modify :query => {:state => 'stale'}, :sort => 'timeid',
+        :update => {:$set => {:state => 'holding'}}
+      break if op.nil?
+      op.recompute!
+      summary.operations += 1
     end
     summary
   end
 end
 
+require 'mongo_percolator/find_and_modify_plugin'
 require 'mongo_percolator/addressable'
 require 'mongo_percolator/addressable/diff'
 require 'mongo_percolator/node_common'

@@ -8,16 +8,54 @@ module MongoPercolator
   class Operation
     include MongoMapper::Document
     include Addressable
+    include FindAndModifyPlugin
+
+    extend Forwardable
+    # The instane method self_class returns self.class, so I can have instance
+    # versions of class emthods.
+    def_delegators :self_class, :emit_block, :dependencies
 
     # This is faster than timestamps! and gives me one-second resolution. All
     # I use it for is sorting.
     key :timeid, BSON::ObjectId
     before_save { self.timeid = BSON::ObjectId.new }
 
-    # I allow there to be callbacks before, after and around the emit block 
-    # invocation. Unlike the emit block itself, the callbacks are executed
-    # in the context of the operation.
-    define_model_callbacks :emit
+    # Each time the operation is saved, I check to see if the composition
+    # has changed. Although I only care about this if it's been persisted and
+    # if it's not currently being recomputed. Generally new operations start out
+    # in the stale state, so I don't need to do this the first time it's saved
+    # and if it's saving at the end of computation, then it shouldn't be stale
+    # because it's just been recomputed.
+    before_save { expire! if persisted? and composition_changed? }
+
+    # Whether or not the tracked operation is stale. It starts off stale. The
+    # only circumstance this should be switched to true is just after creation
+    # while the operation is still held by the creator, or as part of a fetch.
+    key :stale, Boolean, :default => true
+    attr_protected :stale
+
+    # Managed by state machine. This is used to get exclusive control of an operation
+    # for processing or mark the operation as in an error state. The transitions
+    # are only from the :held state. Because only one thread/process can hold
+    # an operation at a time, these transitions don't result in race conditions
+    # (i.e., within the time the state is read and posted to the database). 
+    key :state, String
+    attr_protected :state
+    state_machine :state, :initial => :available, :action => :post_state do
+      state :available
+      state :held
+      state :error
+
+      event(:release) { transition :held => :available }
+      event(:choke) {transition :held => :error }
+      # fetch (below) also causes a transition :available => :held
+    end
+
+    # Because I don't write state information upon save(), I need to separatly
+    # persist it for upon creation.
+    after_create do
+      set(:state => state, :stale => stale)
+    end
 
     # The primary job of each operation instance is to keep track of which
     # particular parent documents the operation depends on. For this purpose
@@ -27,10 +65,10 @@ module MongoPercolator
     key :parents, ParentMeta
     attr_protected :parents
 
-    # Start the operation out as needing recomputation.
-    key :_old, Boolean, :default => true
-    key :_error, Boolean, :default => false
-    before_save :determine_if_old
+    # I allow there to be callbacks before, after and around the emit block 
+    # invocation. Unlike the emit block itself, the callbacks are executed
+    # in the context of the operation.
+    define_model_callbacks :emit
 
     # These domain-specific langauge methods are to be used in specifying the 
     # operation definition that inherits from this class.
@@ -40,9 +78,8 @@ module MongoPercolator
       # functions and variables.
       def emit &block
         ensure_is_subclass
-        raise ArgumentError.new("Emit block takes no args").add(to_mongo) unless
-          block.arity == 0
-        raise Collision.new("emit already called").add(to_mongo) unless @emit.nil?
+        raise ArgumentError, "Emit block takes no args" unless block.arity == 0
+        raise Collision, "emit already called" unless @emit.nil?
         @emit = block
       end
 
@@ -200,6 +237,27 @@ module MongoPercolator
 
     # These class methods are for general use and not really part of the DSL
     module ClassMethods
+      def fetch(criteria = {}, sort = 'timeid')
+        raise ArgumentError, "Expecting Hash" unless criteria.kind_of? Hash
+        criteria = criteria.merge :state => 'available'
+        criteria[:stale] ||= true
+        op = {:$set => {:state => 'held', :stale => false}}
+        find_and_modify :query => criteria, :update => op, :sort => sort,
+          :new => true
+      end
+
+      def perform!(id)
+        perform_on!(nil, id)
+      end
+
+      def perform_on!(node, id)
+        op = fetch({:_id => id}) or raise FetchFailed.new("Fetch failed").
+          add(:_id => id, :node => node)
+        # I use instance eval because compute is private, so that you're not
+        # tempted to use it directly and circumvent proper state management.
+        op.instance_eval { compute(node) }
+      end
+
       # @private
       def guess_class(reader, options)
         ensure_is_subclass
@@ -266,10 +324,90 @@ module MongoPercolator
       def singular(label, options)
         options[:no_singularize] ? label : label.to_s.singularize.to_sym
       end
+
+      # This is a hack to prevent overwriting state information that may have changed
+      # since the object was read. I need to inject this at such a low level so
+      # that I can keep intact the chain of super calls inside MongoMapper. For the
+      # MongoPercolator::Operation's collection, I override save so that when an
+      # already persisted object is updated, it uses the $set operator rather than
+      # overwriting the whole document.
+      def collection
+        # If the document has been persisted already, change the behavior of save()
+        # so that it calls update using the $set operator.
+        col = super
+        col.define_singleton_method :save do |doc, opts|
+          id = doc.delete :_id
+          id = doc.delete '_id' if id.nil?
+          raise MissingData.new("No id found").add(doc.to_mongo) if id.nil?
+          # Exclude our state variables from the properites we persist so that saving
+          # will not overwrite our state variables.
+          doc = doc.reject{|k,v| %(stale state).include? k}
+          update({:_id => id}, {:$set => doc}, :upsert => true, 
+            :safe => opts.fetch(:safe, @safe))
+          id
+        end
+
+        # Return the modified collection
+        col
+      end
     end
 
     extend DSL
     extend ClassMethods
+
+    # This only retuns the operations knowledge of itself, not necessarily the
+    # latest value in the database.
+    def stale?
+      stale == true
+    end
+
+    def post_state
+      set(:state => state)
+    end
+
+    # This marks an operation as not stale, but is only possible if the op hasn't
+    # been persisted. When operations are inserted for the first time their stale
+    # flag is included in the write. 
+    def fresh!
+      raise StateError.new("already persisted").add(to_mongo) if persisted?
+      self.stale = false
+    end
+
+    # Mark the operation as stale.
+    def expire!
+      self.stale = true
+      set(:stale => true)
+    end
+
+#    # I override save so that I can not save the state variable when I save.
+#    # This is because concurrent processes may have subsequently modified it. The
+#    # code here closely follows the MongoMapper code.
+#    def save(options = {})
+#      options.assert_valid_keys(:validate, :safe)
+#      if persisted?
+#        # writable excludes the state and stale flag.
+#        op = {:$set => writable}
+#        result = collection.update({:_id => id}, op, :safe => options[:safe])
+#      else
+#        # When an operation is saved for the first time, it includes the state
+#        # and stale flag.
+#        result = collection.insert(to_mongo, :save => options[:safe])
+#        @_new = false
+#      end
+#      result != false
+#    end
+
+    def perform!
+      raise MissingData.new("Must have node").add(to_mongo) unless
+        self.respond_to? :node
+      perform_on!(node)
+    end
+
+    # By routing this method through a class method, I ensure that the operation
+    # is pulled off the collection using fetch.
+    def perform_on!(given_node)
+      self.class.perform_on!(given_node, id)
+    end
 
     # Return a list of this operation's dependencies which depend on parent,
     # and for which the parent has changed since it was last persisted.
@@ -283,91 +421,6 @@ module MongoPercolator
       deps = dependencies.select &match_head(parent_label parent)
       parent_diff = parent.diff
       deps.select { |dep| parent_diff.changed? tail(dep) }
-    end
-
-    # Provide a instance method to return the class's dependencies.
-    def dependencies
-      self.class.dependencies
-    end
-
-    # Recompute the computed properties. If the node has not been saved then
-    # the node association won't be working. in this case, we can pass in 
-    # a node object to use. This is important when the validations required
-    # to save the node depend on the computed properties. Without the abilty
-    # to pass in the node, we wouldn't be able to compute the properties
-    # required to pass the validations becuase we couldn't load the node
-    # through the association because it hasn't been saved.
-    #
-    # @param given_node [MongoPercolator::Node] Node to recompute.
-    def recompute(given_node = nil)
-      raise MissingData.new("Must belong to node").add(to_mongo) unless
-        self.respond_to? :node
-      given_node ||= node
-      raise KeyError.new("node is nil").add(to_mongo) if given_node.nil?
-
-      # Special variable used inside the block
-      gathered = gather
-      deps = dependencies
-
-      # Since I need access to the inputs from inside the emit block, I add
-      # a pair of singleton methods. The signular version expects to find
-      # just one item, and the plural version expects to find an array. Each
-      # function takes a parameter giving the address.
-      given_node.define_singleton_method :inputs do |addr|
-        raise ArgumentError.new("Must provide address").add(to_mongo) if addr.nil?
-        raise ArgumentError.new("Invalid address").
-          add(to_mongo.merge(:address => addr)) unless deps.include?(addr)
-        gathered[addr]
-      end
-      given_node.define_singleton_method :input do |addr|
-        raise ArgumentError.new("Must provide address").add(to_mongo) if addr.nil?
-        raise ArgumentError.new("Invalid address").
-          add(to_mongo.merge(:address => addr)) unless deps.include?(addr)
-        raise RuntimeError.new("Too many matches").add(to_mongo) if
-          gathered[addr].length > 1
-        gathered[addr].first
-      end
-
-      # Execute the emit block in the context of the node, and save it.
-      run_callbacks :emit do
-        given_node.instance_eval &emit_block
-      end
-      return if destroyed?
-
-      # When we save an operation, if the composition has changed (i.e. the 
-      # identities of the parents) then it will be marked as old. However, if 
-      # we recompute, this doesn't matter, the operation should not be old. 
-      # However, when we save the operation after recomputation, it will be 
-      # marked as old because the composition has changed. An easy, albeit 
-      # somewhat inefficient way to get around this is to save the operation 
-      # before recomputation if the composition has changed. That way after the 
-      # computation, when we mark it as no longer old and save again, the 
-      # callback won't mark it as old again. 
-      save! if composition_changed?
-
-      # Indicate that we're no longer old and save.
-      not_old
-      save!
-
-      nil
-    end
-
-    def not_old
-      self._old = false
-    end
-
-    # Same as recompute() but it saves the node at the end
-    def recompute!(given_node = nil)
-      raise MissingData.new("Must belong to node").add(to_mongo) unless
-        self.respond_to? :node
-      given_node ||= node
-      recompute(given_node)
-      given_node.save!
-    end
-
-    # Get the emit block from the class variable
-    def emit_block
-      self.class.emit_block
     end
 
     # Collect all the data required to perform the operation. This instance
@@ -384,14 +437,6 @@ module MongoPercolator
     # @return [Boolean]
     def parent?(object)
       parent_ids.include? object.id
-    end
-
-    # Indicate whether the operation needs recomputing (i.e. a parent has 
-    # changed).
-    def old?
-      # For a new object (not persisted) we don't worry about whether the 
-      # composition has changed, because of course it has
-      _old or (persisted? and composition_changed?)
     end
 
     # Reach into the parent meta and get the parent ids
@@ -420,22 +465,76 @@ module MongoPercolator
       parents[label].delete parent_id
     end
 
+    # Examine structural properties of the operation to see if they've changed.
     def composition_changed?
-      # If we don't know that we've changed, then use a diff. But exclude _old
-      # so that _old can be changed and not always causing the new object to
-      # look old.
       properties = %w(parents.ids parents.meta node_id)
       local_diff = diff
       properties.select{|prop| local_diff.changed? prop}.length > 0
     end
 
-    # Mark the operation as having an error. This will prevent it from getting
-    # continually percolated
-    def error!
-      self.set :_error => true
+    # I set up a method so I can forward to self.class
+    def self_class
+      self.class
     end
 
   private
+    # Cause the emit block to be executed. If the node has not been saved then
+    # the node association won't be working. in this case, we can pass in 
+    # a node object to use. This is important when the validations required
+    # to save the node depend on the computed properties. Without the abilty
+    # to pass in the node, we wouldn't be able to compute the properties
+    # required to pass the validations becuase we couldn't load the node
+    # through the association because it hasn't been saved.
+    #
+    # This method is private because the perform class method should always
+    # be used. This forces the operation to have been persisted before
+    # computation, and it makes sure that it's tracker is property maintained.
+    #
+    # @param given_node [MongoPercolator::Node] Node to recompute.
+    def compute(given_node = nil)
+      begin
+        raise RuntimeError.new("Operation not held").add(to_mongo) unless held?
+        # Only use the given node if node is nil
+        given_node = respond_to?(:node) ? node : given_node
+        raise KeyError.new("node is nil").add(to_mongo) if given_node.nil?
+  
+        # Variable I need accessible to the singleton methods below.
+        gathered = gather
+        deps = dependencies
+  
+        # Since I need access to the inputs from inside the emit block, I add
+        # a pair of singleton methods. The signular version expects to find
+        # just one item, and the plural version expects to find an array. Each
+        # function takes a parameter giving the address.
+        given_node.define_singleton_method :inputs do |addr|
+          raise ArgumentError.new("Must provide address").add(to_mongo) if addr.nil?
+          raise ArgumentError.new("Invalid address").
+            add(to_mongo.merge(:address => addr)) unless deps.include?(addr)
+          gathered[addr]
+        end
+        given_node.define_singleton_method :input do |addr|
+          raise ArgumentError.new("Must provide address").add(to_mongo) if addr.nil?
+          raise ArgumentError.new("Invalid address").
+            add(to_mongo.merge(:address => addr)) unless deps.include?(addr)
+          raise RuntimeError.new("Too many matches").add(to_mongo) if
+            gathered[addr].length > 1
+          gathered[addr].first
+        end
+  
+        # Execute the emit block in the context of the node, and save it.
+        run_callbacks(:emit) { given_node.instance_eval &emit_block }
+        return if destroyed?
+  
+        given_node.save!
+        save!
+        release!
+      rescue StandardError => e
+        # Mark the operation as in the error state, and re-raise the error
+        choke!
+        raise e
+      end
+    end
+
     def ivar(name)
       "@#{name}".to_sym
     end
@@ -449,8 +548,8 @@ module MongoPercolator
       objects.each do |object|
         # Make sure the object is persisted before we use its id.
         object.save! unless object.persisted?
-        # If this object isn't already a parent, mark this operation as old
-        self._old = true unless parent? object
+        # If this object isn't already a parent, mark this operation as stale
+        expire! unless parent? object
         ids.push object.id
       end
       parents[reader] = ids
@@ -459,12 +558,12 @@ module MongoPercolator
     def update_ids(reader, ids)
       unless parents.include? reader and parents[reader] == ids
         parents[reader] = ids
-        self._old = true
+        expire!
       end
     end
 
-    def determine_if_old
-      self._old = true if old?
-    end
+#    def writable
+#      to_mongo.reject{|k,v| %(stale state).include? k}
+#    end
   end 
 end

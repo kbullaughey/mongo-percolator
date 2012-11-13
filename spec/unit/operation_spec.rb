@@ -122,7 +122,7 @@ describe "MongoPercolator::Operation unit" do
   it "can use the abbreviated operation syntax" do
     node = NodeWithAbbreviatedSyntax.create!(:op => NodeWithAbbreviatedSyntax::Op.new)   
     node.was_run.should be_false
-    node.op.recompute!
+    node.op.perform!
     node.reload
     node.was_run.should be_true
   end
@@ -141,7 +141,7 @@ describe "MongoPercolator::Operation unit" do
     node = NodeWithAbbreviatedSyntax.create
     node.create_op
     node.was_run.should be_false
-    node.op.recompute!
+    node.op.perform!
     node.reload
     node.was_run.should be_true
   end
@@ -149,39 +149,40 @@ describe "MongoPercolator::Operation unit" do
   it "can be put in the error state even when save doesn't work" do
     op = OpCantBeSaved.new :req => "has required field"
     op.save.should be_true
-    op.old?.should be_true
-    op._error.should be_false
+    op.stale?.should be_true
+    op.error?.should be_false
+    op = OpCantBeSaved.fetch :_id => op.id
+    op.should_not be_nil
     op.req = nil
     op.save.should be_false
-    op.error!
+    op.choke!
     op.reload
-    op._error.should be_true
+    op.error?.should be_true
   end
+
+  pending "Check that state variables are not overwritten by save"
 
   it "raises an error when percolating an operation without a node" do
     op = OpCantBeSaved.new :req => "has required field"
     op.save.should be_true
-    begin
-      op.recompute!
-    rescue StandardError => e
-      e.extra.should_not be_nil
-      e.extra.should be_kind_of(Hash)
-    else
-      raise "Should have raised error"
-    end
+    expect {
+      op.perform!
+    }.to raise_error(MongoPercolator::MissingData, /node/)
   end
+
+  pending "Check that perform! fails if the operation is not held"
 
   describe "RealOpUnit" do
     it "can be finalized" do
       expect { RealOpUnit.finalize }.to_not raise_error
     end
 
-    it "can doesn't need to look old upon creation" do
+    it "can doesn't need to look stale upon creation" do
       op = RealOpUnit.new
       op.animals_id = "a"
-      op.not_old
+      op.fresh!
       op.composition_changed?.should be_true
-      op.old?.should be_false
+      op.stale?.should be_false
     end
 
     it "responds to the parent readers" do
@@ -233,16 +234,24 @@ describe "MongoPercolator::Operation unit" do
       op = RealOpUnit.new
       op.animals_id = "a"
       expect {
-        op.recompute!
+        op.perform!
       }.to raise_error(MongoPercolator::MissingData, /node/)
     end
 
-    it "can be marked not old" do
+    it "can be marked current when not yet persisted" do
       op = RealOpUnit.new
-      op.save
-      op.old?.should be_true
-      op.not_old
-      op.old?.should be_false
+      op.stale?.should be_true
+      op.fresh!
+      op.stale?.should be_false
+    end
+
+    it "cannot be marked current if it's already been persisted" do
+      op = RealOpUnit.new
+      op.save.should be_true
+      op.stale?.should be_true
+      expect {
+        op.fresh!
+      }.to raise_error(MongoPercolator::StateError, /persisted/)
     end
 
     context "has parents" do
@@ -269,16 +278,7 @@ describe "MongoPercolator::Operation unit" do
         new_loc = LocationsUnitTest.create(:country => 'taiwan')
         @op.locations_unit_test_ids << new_loc.id
         @op.diff.changed?(@op.dependencies).should be_true
-        @op.old?.should be_true
-      end
-
-      it "if an old object is marked not old, then it doesn't think its old" do
-        @op._old = true
-        @op.save.should be_true
-        @op.old?.should be_true
-        @op._old = false
-        @op.diff.changed?('_old').should be_true
-        @op.old?.should be_false
+        @op.stale?.should be_true
       end
 
       it "should know the parent is a parent" do

@@ -70,7 +70,7 @@ describe "MongoPercolator Node & Operation integration" do
       RealOp.parent_labels.to_a.should == [:animals]
     end
 
-    it "operations can be added to another class" do
+    it "allows operations to be added to another class" do
       node = SomeOtherNode.create!
       node.create_real_op :animals => AnimalsIntegration.new(:wild => ['baboon'])
       node.real_op.recompute!
@@ -177,25 +177,26 @@ describe "MongoPercolator Node & Operation integration" do
         end
 
         it "should be marked as old when the parent is changed" do
-          @node.real_op.old?.should be_false
+          binding.pry
+          @node.real_op.stale?.should be_false
           @animals.farm = ['hog']
-          @animals.save
+          @animals.save!
           @node.reload
-          @node.real_op.old?.should be_true
+          @node.real_op.stale?.should be_true
         end
 
         it "should be marked as old when the identity of the parent changes" do
-          @node.real_op.old?.should be_false
+          @node.real_op.stale?.should be_false
           new_animals = AnimalsIntegration.create :farm => ['sheep']
           new_animals.should_not be_nil
           @node.real_op.animals = new_animals
-          @node.real_op.old?.should be_true
+          @node.real_op.stale?.should be_true
         end
     
         it "gets an updated computed property when the parent is changed" do
           @animals.farm = ['hog']
           @animals.save
-          MongoPercolator::Operation.where(:_old => true).count.should == 1
+          MongoPercolator::Operation.where(:state => "stale").count.should == 1
           MongoPercolator.percolate
           @node.reload
           @node.pets.should == %w(binturong dugong hog sloth)
@@ -206,14 +207,13 @@ describe "MongoPercolator Node & Operation integration" do
           @animals.save
           MongoPercolator.percolate
           @node.reload
-          @node.real_op.old?.should be_false
+          @node.real_op.stale?.should be_false
         end
 
         it "only takes the number of passes needed" do
           @animals.farm = ['hog']
           @animals.save
-          passes_made = MongoPercolator.percolate.iterations
-          passes_made.should == 1
+          MongoPercolator.percolate.operations.should == 1
         end
       end
     end

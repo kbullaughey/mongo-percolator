@@ -5,6 +5,9 @@ module MongoPercolator
     extend ActiveSupport::Concern
     include MongoPercolator::NodeCommon
 
+    extend Forwardable
+    def_delegators :self_class, :obey_exports?, :exports
+
     module DSL
       # Operations are a one-to-one mapping
       def operation(label, klass=nil)
@@ -122,7 +125,7 @@ module MongoPercolator
         # If we (the parent) have changed in ways that are meaningful to this
         # operation, then we cause the relevant computed properties to be 
         # recomputed. 
-        op._old = true unless op.relevant_changes_for(self).empty?
+        op.go_stale! unless op.relevant_changes_for(self).empty?
         op.save!
       end
       return true
@@ -134,20 +137,16 @@ module MongoPercolator
 
       MongoPercolator::Operation.where('parents.ids' => id).find_each do |op|
         op.remove_parent id
-        op._old = true
+        op.go_stale!
         op.save!
       end
       return true
     end
 
-    # Instance version of the class method
-    def obey_exports?
-      self.class.obey_exports?
-    end
-
-    # Instance version of the class method
-    def exports
-      self.class.exports
+    # The instane method self_class returns self.class, so I can have instance
+    # versions of class emthods.
+    def self_class
+      self.class
     end
   end
 end
