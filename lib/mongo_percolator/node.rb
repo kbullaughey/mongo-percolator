@@ -125,8 +125,7 @@ module MongoPercolator
         # If we (the parent) have changed in ways that are meaningful to this
         # operation, then we cause the relevant computed properties to be 
         # recomputed. 
-        op.go_stale! unless op.relevant_changes_for(self).empty?
-        op.save!
+        op.expire! unless op.relevant_changes_for(self).empty?
       end
       return true
     end
@@ -137,7 +136,7 @@ module MongoPercolator
 
       MongoPercolator::Operation.where('parents.ids' => id).find_each do |op|
         op.remove_parent id
-        op.go_stale!
+        op.expire!
         op.save!
       end
       return true

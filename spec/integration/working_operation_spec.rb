@@ -73,7 +73,7 @@ describe "MongoPercolator Node & Operation integration" do
     it "allows operations to be added to another class" do
       node = SomeOtherNode.create!
       node.create_real_op :animals => AnimalsIntegration.new(:wild => ['baboon'])
-      node.real_op.recompute!
+      node.real_op.perform!
       node.reload
       node.pets.should include('baboon')
     end
@@ -147,7 +147,7 @@ describe "MongoPercolator Node & Operation integration" do
   
       it "can compute computed properties on demand" do
         @node.pets.should == []
-        @op.recompute!
+        @op.perform!
         @node.reload
         @node.pets.should == %w(binturong dugong sloth)
       end
@@ -172,12 +172,11 @@ describe "MongoPercolator Node & Operation integration" do
 
       context "computed initially" do
         before :each do
-          @op.recompute!
+          @op.perform!
           @node.reload
         end
 
         it "should be marked as old when the parent is changed" do
-          binding.pry
           @node.real_op.stale?.should be_false
           @animals.farm = ['hog']
           @animals.save!
@@ -196,16 +195,16 @@ describe "MongoPercolator Node & Operation integration" do
         it "gets an updated computed property when the parent is changed" do
           @animals.farm = ['hog']
           @animals.save
-          MongoPercolator::Operation.where(:state => "stale").count.should == 1
-          MongoPercolator.percolate
+          MongoPercolator::Operation.where(:stale => true).count.should == 1
+          MongoPercolator.percolate.operations.should == 1
           @node.reload
           @node.pets.should == %w(binturong dugong hog sloth)
         end
 
         it "is no longer marked as old after percolation" do
           @animals.farm = ['hog']
-          @animals.save
-          MongoPercolator.percolate
+          @animals.save.should be_true
+          MongoPercolator.percolate.operations.should == 1
           @node.reload
           @node.real_op.stale?.should be_false
         end
@@ -223,4 +222,6 @@ describe "MongoPercolator Node & Operation integration" do
   pending "check parents can be out of order when using :position (#{__FILE__})"
   pending "check that parents can have gaps when using :position (#{__FILE__})"
   pending "check that computes can compute vaious associations (#{__FILE__})"
+  pending "check that state variables are not overwritten on save (#{__FILE__})"
+  pending "check that timeid is updating each place it should (#{__FILE__})"
 end

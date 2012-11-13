@@ -18,7 +18,7 @@ module MongoPercolator
     # This is faster than timestamps! and gives me one-second resolution. All
     # I use it for is sorting.
     key :timeid, BSON::ObjectId
-    before_save { self.timeid = BSON::ObjectId.new }
+    after_save { set :timeid => tick }
 
     # Each time the operation is saved, I check to see if the composition
     # has changed. Although I only care about this if it's been persisted and
@@ -54,7 +54,7 @@ module MongoPercolator
     # Because I don't write state information upon save(), I need to separatly
     # persist it for upon creation.
     after_create do
-      set(:state => state, :stale => stale)
+      set :state => state, :stale => stale, :timeid => tick
     end
 
     # The primary job of each operation instance is to keep track of which
@@ -189,13 +189,11 @@ module MongoPercolator
         
         # Define a writer method. Writing objects will cause them to be saved.
         define_method "#{reader}="do |objects|
-          ensure_parents_exists
           update_ids_using_objects(reader, objects)
         end
 
         # Define a writer for ids
         define_method "#{singular(reader, options)}_ids=" do |ids|
-          ensure_parents_exists
           update_ids(reader, ids)
         end
       end
@@ -215,7 +213,7 @@ module MongoPercolator
         target_class.after_create do
           # All we need to do is create a new instance of the observer 
           # operation and set the node
-          observer_class.create!(:node => self)
+          observer_class.create! :node => self
         end
 
         # Since we don't have a 'one' association in the other direction with
@@ -237,6 +235,43 @@ module MongoPercolator
 
     # These class methods are for general use and not really part of the DSL
     module ClassMethods
+      # The proper way to fetch and perform an operation all in one go.
+      #
+      # @param criteria [Hash] query document for selecting an operation.
+      # @param sort [String|Array] sort specification appropriate for mongodb.
+      # @return [Boolean] whether or not an operation was found to perform.
+      def fetch_and_perform(criteria = {}, sort = 'timeid')
+        op = fetch(criteria, sort) or return false
+        op.instance_eval { compute }
+        true
+      end
+
+      # Perform a particular operation
+      #
+      # @param id [BSON::ObjectId] id of operation to perform.
+      def perform!(id)
+        perform_on!(nil, id)
+      end
+
+      # Perform a particular operation, but also provide a node. You want to use this
+      # when the node has not been persisted yet (perhaps because validations require
+      # the operation to be performed.
+      #
+      # @param node [MongoPercolator::Node] node on which to perform the operation.
+      # @param id [BSON::ObjectId] id of operation to perform.
+      def perform_on!(node, id)
+        op = fetch({:_id => id}) or raise FetchFailed.new("Fetch failed").
+          add(:_id => id, :node => node)
+        # I use instance eval because compute is private, so that you're not
+        # tempted to use it directly and circumvent proper state management.
+        op.instance_eval { compute(node) }
+      end
+
+      # Fetch an operation to perform. Don't use this function.
+      #
+      # @private
+      # @param criteria [Hash] query document for selecting an operation.
+      # @param sort [String|Array] sort specification appropriate for mongodb.
       def fetch(criteria = {}, sort = 'timeid')
         raise ArgumentError, "Expecting Hash" unless criteria.kind_of? Hash
         criteria = criteria.merge :state => 'available'
@@ -244,18 +279,6 @@ module MongoPercolator
         op = {:$set => {:state => 'held', :stale => false}}
         find_and_modify :query => criteria, :update => op, :sort => sort,
           :new => true
-      end
-
-      def perform!(id)
-        perform_on!(nil, id)
-      end
-
-      def perform_on!(node, id)
-        op = fetch({:_id => id}) or raise FetchFailed.new("Fetch failed").
-          add(:_id => id, :node => node)
-        # I use instance eval because compute is private, so that you're not
-        # tempted to use it directly and circumvent proper state management.
-        op.instance_eval { compute(node) }
       end
 
       # @private
@@ -341,7 +364,7 @@ module MongoPercolator
           raise MissingData.new("No id found").add(doc.to_mongo) if id.nil?
           # Exclude our state variables from the properites we persist so that saving
           # will not overwrite our state variables.
-          doc = doc.reject{|k,v| %(stale state).include? k}
+          doc = doc.reject{|k,v| %(stale state timeid).include? k}
           update({:_id => id}, {:$set => doc}, :upsert => true, 
             :safe => opts.fetch(:safe, @safe))
           id
@@ -362,7 +385,7 @@ module MongoPercolator
     end
 
     def post_state
-      set(:state => state)
+      set :state => state, :timeid => tick
     end
 
     # This marks an operation as not stale, but is only possible if the op hasn't
@@ -376,27 +399,10 @@ module MongoPercolator
     # Mark the operation as stale.
     def expire!
       self.stale = true
-      set(:stale => true)
+      set :stale => stale, :timeid => tick
     end
 
-#    # I override save so that I can not save the state variable when I save.
-#    # This is because concurrent processes may have subsequently modified it. The
-#    # code here closely follows the MongoMapper code.
-#    def save(options = {})
-#      options.assert_valid_keys(:validate, :safe)
-#      if persisted?
-#        # writable excludes the state and stale flag.
-#        op = {:$set => writable}
-#        result = collection.update({:_id => id}, op, :safe => options[:safe])
-#      else
-#        # When an operation is saved for the first time, it includes the state
-#        # and stale flag.
-#        result = collection.insert(to_mongo, :save => options[:safe])
-#        @_new = false
-#      end
-#      result != false
-#    end
-
+    # Perform the operation using the currently associated node.
     def perform!
       raise MissingData.new("Must have node").add(to_mongo) unless
         self.respond_to? :node
@@ -407,6 +413,10 @@ module MongoPercolator
     # is pulled off the collection using fetch.
     def perform_on!(given_node)
       self.class.perform_on!(given_node, id)
+    end
+
+    def tick
+      BSON::ObjectId.new
     end
 
     # Return a list of this operation's dependencies which depend on parent,
@@ -489,14 +499,28 @@ module MongoPercolator
     # This method is private because the perform class method should always
     # be used. This forces the operation to have been persisted before
     # computation, and it makes sure that it's tracker is property maintained.
+    # 
+    # Computing an operation doesn't actually change the operation object
+    # other than the state information (which is separately persisted) and so
+    # we don't need to save it. Thus it's not a worry if concurrently
+    # executing code modifies the operation and saves it (because we're not
+    # at risk of loosing state information).
     #
     # @param given_node [MongoPercolator::Node] Node to recompute.
     def compute(given_node = nil)
       begin
+        # Make sure we've reserved this node for computation
         raise RuntimeError.new("Operation not held").add(to_mongo) unless held?
-        # Only use the given node if node is nil
-        given_node = respond_to?(:node) ? node : given_node
-        raise KeyError.new("node is nil").add(to_mongo) if given_node.nil?
+
+        # Only use the given node if node is nil, but if one is provided 
+        # unnecessarily, make sure it matches the associated one.
+        if respond_to? :node
+          raise ArgumentError.new("Node doesn't match").add(to_mongo) if 
+            !given_node.nil? and node.id != given_node.id
+          given_node = node
+        else
+          raise KeyError.new("node is nil").add(to_mongo) if given_node.nil?
+        end
   
         # Variable I need accessible to the singleton methods below.
         gathered = gather
@@ -526,7 +550,6 @@ module MongoPercolator
         return if destroyed?
   
         given_node.save!
-        save!
         release!
       rescue StandardError => e
         # Mark the operation as in the error state, and re-raise the error
@@ -544,6 +567,7 @@ module MongoPercolator
     end
 
     def update_ids_using_objects(reader, objects)
+      ensure_parents_exists
       ids = []
       objects.each do |object|
         # Make sure the object is persisted before we use its id.
@@ -556,14 +580,11 @@ module MongoPercolator
     end
 
     def update_ids(reader, ids)
+      ensure_parents_exists
       unless parents.include? reader and parents[reader] == ids
         parents[reader] = ids
         expire!
       end
     end
-
-#    def writable
-#      to_mongo.reject{|k,v| %(stale state).include? k}
-#    end
   end 
 end

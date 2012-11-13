@@ -42,14 +42,11 @@ module MongoPercolator
 
   # Recompute everything
   # 
-  # @return [Integer] Actual number of passes made.
+  # @return [Summary] Details of how many operations were performed.
   def self.percolate
     summary = Summary.new
     loop do
-      op = Operation.find_and_modify :query => {:state => 'stale'}, :sort => 'timeid',
-        :update => {:$set => {:state => 'holding'}}
-      break if op.nil?
-      op.recompute!
+      Operation.fetch_and_perform or break
       summary.operations += 1
     end
     summary
