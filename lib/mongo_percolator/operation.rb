@@ -32,7 +32,6 @@ module MongoPercolator
     # only circumstance this should be switched to true is just after creation
     # while the operation is still held by the creator, or as part of an acquire.
     key :stale, Boolean, :default => true
-    attr_protected :stale
 
     # Managed by state machine. This is used to get exclusive control of an operation
     # for processing or mark the operation as in an error state. The transitions
@@ -588,8 +587,6 @@ module MongoPercolator
       objects.each do |object|
         # Make sure the object is persisted before we use its id.
         object.save! unless object.persisted?
-        # If this object isn't already a parent, mark this operation as stale
-        expire! unless parent? object
         ids.push object.id
       end
       parents[reader] = ids
@@ -599,7 +596,6 @@ module MongoPercolator
       ensure_parents_exists
       unless parents.include? reader and parents[reader] == ids
         parents[reader] = ids
-        expire!
       end
     end
   end 

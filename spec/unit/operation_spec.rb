@@ -185,6 +185,13 @@ describe "MongoPercolator::Operation unit" do
       op.stale?.should be_false
     end
 
+    it "can doesn't need to look stale upon creation" do
+      op = RealOpUnit.new :stale => false
+      op.animals_id = "a"
+      op.composition_changed?.should be_true
+      op.stale?.should be_false
+    end
+
     it "responds to the parent readers" do
       op = RealOpUnit.new
       op.should respond_to(:animals)
