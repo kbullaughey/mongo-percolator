@@ -527,12 +527,12 @@ module MongoPercolator
         # Make sure we've reserved this node for computation
         raise RuntimeError.new("Operation not held").add(to_mongo) unless held?
 
-        # Only use the given node if node is nil, but if one is provided 
-        # unnecessarily, make sure it matches the associated one.
+        # Only use the associated node if given_node is nil. If both exist, then
+        # make sure their ids match.
         if respond_to?(:node) and !node.nil?
           raise ArgumentError.new("Node doesn't match").add(to_mongo) if 
             !given_node.nil? and node.id != given_node.id
-          given_node = node
+          given_node = node if given_node.nil?
         else
           raise KeyError.new("node is nil").add(to_mongo) if given_node.nil?
         end
