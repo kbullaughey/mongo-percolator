@@ -31,7 +31,7 @@ describe "Node exports integration" do
       :visible => "public"
     @op = NodeExportsIntegration1Decendant::Op.new :par => @parent
     @child = NodeExportsIntegration1Decendant.create! :op => @op
-    @child.op.recompute!
+    @child.op.perform!
     @child.reload
   end
 
@@ -43,7 +43,7 @@ describe "Node exports integration" do
     @parent.visible = "open"
     @parent.save.should be_true
     @op.reload
-    @op.old?.should be_true
+    @op.stale?.should be_true
     MongoPercolator.percolate
     @child.reload
     @child.visible_copy.should == "open"
@@ -53,7 +53,7 @@ describe "Node exports integration" do
     @parent.hidden = "closed"
     @parent.save.should be_true
     @op.reload
-    @op.old?.should be_false
+    @op.stale?.should be_false
   end
 end
 

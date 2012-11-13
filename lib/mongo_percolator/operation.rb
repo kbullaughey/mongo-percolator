@@ -30,7 +30,7 @@ module MongoPercolator
 
     # Whether or not the tracked operation is stale. It starts off stale. The
     # only circumstance this should be switched to true is just after creation
-    # while the operation is still held by the creator, or as part of a fetch.
+    # while the operation is still held by the creator, or as part of an acquire.
     key :stale, Boolean, :default => true
     attr_protected :stale
 
@@ -48,7 +48,12 @@ module MongoPercolator
 
       event(:release) { transition :held => :available }
       event(:choke) {transition :held => :error }
-      # fetch (below) also causes a transition :available => :held
+      # There are two ways to acquire an operation. One is if it hasn't been 
+      # persisted, we can use this transition. Otherwise we need to call 
+      # acquire (the class method).
+      event(:acquire) do 
+        transition :held => :error, :if => lambda {|op| !op.persisted?}
+      end
     end
 
     # Because I don't write state information upon save(), I need to separatly
@@ -132,13 +137,11 @@ module MongoPercolator
         
         # Define a writer method
         define_method "#{reader}="do |object|
-          ensure_parents_exists
           update_ids_using_objects(reader, [object])
         end
 
         # Define a writer for the id of the single parent
         define_method "#{reader}_id=" do |id|
-          ensure_parents_exists
           update_ids(reader, [id])
         end
       end
@@ -235,13 +238,13 @@ module MongoPercolator
 
     # These class methods are for general use and not really part of the DSL
     module ClassMethods
-      # The proper way to fetch and perform an operation all in one go.
+      # The proper way to acquire and perform an operation all in one go.
       #
       # @param criteria [Hash] query document for selecting an operation.
       # @param sort [String|Array] sort specification appropriate for mongodb.
       # @return [Boolean] whether or not an operation was found to perform.
-      def fetch_and_perform(criteria = {}, sort = 'timeid')
-        op = fetch(criteria, sort) or return false
+      def acquire_and_perform(criteria = {}, sort = 'timeid')
+        op = acquire(criteria, sort) or return false
         op.instance_eval { compute }
         true
       end
@@ -260,7 +263,7 @@ module MongoPercolator
       # @param node [MongoPercolator::Node] node on which to perform the operation.
       # @param id [BSON::ObjectId] id of operation to perform.
       def perform_on!(node, id)
-        op = fetch({:_id => id}) or raise FetchFailed.new("Fetch failed").
+        op = acquire({:_id => id}) or raise FetchFailed.new("Fetch failed").
           add(:_id => id, :node => node)
         # I use instance eval because compute is private, so that you're not
         # tempted to use it directly and circumvent proper state management.
@@ -272,7 +275,7 @@ module MongoPercolator
       # @private
       # @param criteria [Hash] query document for selecting an operation.
       # @param sort [String|Array] sort specification appropriate for mongodb.
-      def fetch(criteria = {}, sort = 'timeid')
+      def acquire(criteria = {}, sort = 'timeid')
         raise ArgumentError, "Expecting Hash" unless criteria.kind_of? Hash
         criteria = criteria.merge :state => 'available'
         criteria[:stale] ||= true
@@ -384,8 +387,9 @@ module MongoPercolator
       stale == true
     end
 
+    # Write our state and increment our timeid, but only if we've been persisted.
     def post_state
-      set :state => state, :timeid => tick
+      set :state => state, :timeid => tick if persisted?
     end
 
     # This marks an operation as not stale, but is only possible if the op hasn't
@@ -410,9 +414,21 @@ module MongoPercolator
     end
 
     # By routing this method through a class method, I ensure that the operation
-    # is pulled off the collection using fetch.
+    # is pulled off the collection using acquire.
     def perform_on!(given_node)
-      self.class.perform_on!(given_node, id)
+      # If we've been persisted, we need to go through the acquire process, 
+      # becuase other code could have acquired the operation already. If we're 
+      # not persisted, we can just call compute directly.
+      if persisted?
+        # It's possible the operation has changed, and so we save it before 
+        # performing because we need to go through acquire, which will use the 
+        # persisted operation for computation, which may not have the latest parents.
+        save!
+        self.class.perform_on!(given_node, id)
+      else
+        acquire!
+        compute(given_node)
+      end
     end
 
     def tick

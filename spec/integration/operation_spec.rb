@@ -13,7 +13,7 @@ describe "Operation integration" do
     end
     node = NodeWithInvalidOp2.new :invalid_op2 => NodeWithInvalidOp2::InvalidOp2.new
     expect {
-      node.invalid_op2.recompute(node)
+      node.invalid_op2.perform_on!(node)
     }.to raise_error(ArgumentError, /Invalid address/)
   end
 
@@ -29,7 +29,7 @@ describe "Operation integration" do
     end
     node = NodeWithInvalidOp3.new :invalid_op3 => NodeWithInvalidOp3::InvalidOp3.new
     expect {
-      node.invalid_op3.recompute(node)
+      node.invalid_op3.perform_on!(node)
     }.to raise_error(ArgumentError, /Invalid address/)
   end
 end

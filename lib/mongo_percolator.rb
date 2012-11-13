@@ -46,7 +46,7 @@ module MongoPercolator
   def self.percolate
     summary = Summary.new
     loop do
-      Operation.fetch_and_perform or break
+      Operation.acquire_and_perform or break
       summary.operations += 1
     end
     summary

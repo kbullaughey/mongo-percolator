@@ -151,7 +151,7 @@ describe "MongoPercolator::Operation unit" do
     op.save.should be_true
     op.stale?.should be_true
     op.error?.should be_false
-    op = OpCantBeSaved.fetch :_id => op.id
+    op = OpCantBeSaved.acquire :_id => op.id
     op.should_not be_nil
     op.req = nil
     op.save.should be_false
