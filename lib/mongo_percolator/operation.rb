@@ -529,7 +529,7 @@ module MongoPercolator
 
         # Only use the given node if node is nil, but if one is provided 
         # unnecessarily, make sure it matches the associated one.
-        if respond_to? :node
+        if respond_to?(:node) and !node.nil?
           raise ArgumentError.new("Node doesn't match").add(to_mongo) if 
             !given_node.nil? and node.id != given_node.id
           given_node = node
