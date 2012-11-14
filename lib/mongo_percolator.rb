@@ -4,7 +4,7 @@ require 'active_support/core_ext/string/inflections'
 require 'mongo_mapper'
 require 'state_machine'
 require 'mongo_percolator/version'
-require 'mongo_percolator/summary'
+require 'mongo_percolator/guide'
 
 module MongoPercolator
   def self.whoami?
@@ -40,16 +40,16 @@ module MongoPercolator
     x
   end
 
-  # Recompute everything
-  # 
-  # @return [Summary] Details of how many operations were performed.
+  # Perform all stale operations.
   def self.percolate
-    summary = Summary.new
-    loop do
-      Operation.acquire_and_perform or break
-      summary.operations += 1
-    end
-    summary
+    guide.percolate
+  end
+
+  # Return a guide object that can percolate and monitor for interruptions.
+  # 
+  # @return [Guide] Details of how many operations were performed.
+  def self.guide
+    Guide.new
   end
 end
 

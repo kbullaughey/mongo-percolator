@@ -215,6 +215,12 @@ describe "MongoPercolator Node & Operation integration" do
           @animals.save
           MongoPercolator.percolate.operations.should == 1
         end
+
+        it "can use the guide to percolate" do
+          @animals.farm = ['hog']
+          @animals.save
+          MongoPercolator.guide.percolate.operations.should == 1
+        end
       end
     end
   end
