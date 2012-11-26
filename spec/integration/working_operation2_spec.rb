@@ -25,12 +25,29 @@ describe "MongoPercolator Node & Operation integration (2)" do
       operation :compute, ComputeSum
       key :sum, Float, :default => 0
     end
+
+    # Set up another node class
+    class SummationWithStringParents
+      class ComputeSum < MongoPercolator::Operation
+        declare_parents 'sum_terms'
+        depends_on 'sum_terms[].value'
+
+        emit do
+          self.sum = inputs('sum_terms[].value').sum
+        end
+      end
+      include MongoPercolator::Node
+
+      operation :compute, ComputeSum
+      key :sum, Float, :default => 0
+    end
   end
 
   before :each do
     SumTerm.remove
     MongoPercolator::Operation.remove
     Summation.remove
+    SummationWithStringParents.remove
   end
 
   describe "Summation" do
@@ -114,6 +131,37 @@ describe "MongoPercolator Node & Operation integration (2)" do
         terms[0].ignored = "I changed"
         terms[0].save.should be_true
         MongoPercolator.percolate.operations.should == 0
+      end
+    end
+  end
+
+  describe "SummationWithStringParents" do
+    before :each do
+      @node = SummationWithStringParents.new :compute => SummationWithStringParents::ComputeSum.new
+    end
+
+    it "starts off zero" do
+      @node.sum.should == 0
+    end
+
+    it "can be initially computed asynchronously" do
+      @node.compute.sum_terms = [SumTerm.new(:value => 0.1), SumTerm.new(:value => 0.2)]
+      @node.compute.save.should be_true
+      @node.save.should be_true
+      MongoPercolator.percolate.operations.should == 1
+      @node.reload
+      @node.sum.round(1).should == 0.3
+    end
+
+    context "Two initial terms" do
+      before :each do
+        @node.compute.sum_terms = [SumTerm.new(:value => 0.5), SumTerm.new(:value => 0.5)]
+        @node.compute.perform!
+        @node.reload
+      end
+
+      it "can compute a sum" do
+        @node.sum.should == 1.0
       end
     end
   end
