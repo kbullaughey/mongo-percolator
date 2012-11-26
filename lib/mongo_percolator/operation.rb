@@ -102,8 +102,8 @@ module MongoPercolator
       # @param options [Hash] An optional options hash:
       #   :class [Class] - The class of the parent if not inferrable from label.
       def declare_parent(reader, options={})
-        reader.to_sym if reader.is_a String
         ensure_is_subclass
+        reader = reader.to_sym if reader.is_a? String
         klass = guess_class(reader, options)
 
         # These readers and writers are closures, and so they have access
@@ -149,7 +149,7 @@ module MongoPercolator
       # Add a parent. Use this method when there is a variable number of 
       # parents of the given type.
       #
-      # @param reader [Symbol] The underscore version of the class name or the 
+      # @param reader [Symbol|String] The underscore version of the class name or the 
       #   reader method name if :class => ClassName is given.
       # @param options [Hash] An optional options hash:
       #   :class [Class] - The class of the parent if not inferrable from label.
@@ -157,6 +157,7 @@ module MongoPercolator
       #     class name
       def declare_parents(reader, options={})
         ensure_is_subclass
+        reader = reader.to_sym if reader.is_a? String
         klass = guess_class(reader, options)
 
         # These readers and writers are closures, and so they have access
