@@ -87,6 +87,17 @@ module MongoPercolator
       def exports
         @exports && @exports.to_a
       end
+
+      def versioned?
+        @versioned == true
+      end
+
+      # Give us something to watch that will apply to any change
+      def versioned!
+        @versioned = true
+        key :version, BSON::ObjectId, :default => lambda { BSON::ObjectId.new }
+        before_save { self.version = BSON::ObjectId.new }
+      end
     end
     
     included do
@@ -103,6 +114,10 @@ module MongoPercolator
     #-----------------
     # Instance methods
     #-----------------
+
+    def versioned?
+      !self.version.nil?
+    end
 
     # Check to see if any other nodes depend on this one and if so, cause them 
     # to update. This is usually invoked as a before_save callback. Currently, 

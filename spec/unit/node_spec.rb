@@ -17,7 +17,23 @@ describe "MongoPercolator::Node unit" do
       key :hidden, String
       key :visible, String
       export 'visible'
+      versioned!
     end
+  end
+
+  it "can tell a node is versioned" do
+    NodeUnitTestExports1.versioned?.should be_true
+    NodeUnitTestExports1.new.versioned?.should be_true
+    NodeUnitTestExports1.new.version.should be_a(BSON::ObjectId)
+  end
+
+  it "changes versions on save" do
+    obj = NodeUnitTestExports1.new
+    old_version = obj.version
+    old_version.should be_a(BSON::ObjectId)
+    obj.save.should be_true
+    obj.version.should_not == old_version
+    obj.version.should be_a(BSON::ObjectId)
   end
 
   it "sees no exports on a class without them" do
