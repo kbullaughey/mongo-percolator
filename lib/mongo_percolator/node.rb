@@ -70,6 +70,7 @@ module MongoPercolator
       # This will be executed when this module is included in a class, after 
       # MongoMapper::Document is included.
       def setup
+        plugin FindAndModifyPlugin
         before_save :propagate
         after_destroy :propagate_destroy
       end
@@ -123,15 +124,20 @@ module MongoPercolator
     # to update. This is usually invoked as a before_save callback. Currently, 
     # it's only when a parent is saved that downstream nodes will get updated.
     #
+    # @param options [Hash] Can be the following options:
+    #   * :force => true - force propagation
+    #   * :against => [Hash] - provide a hash against which to make a diff
     # @return [Boolean] whether the callback chain should continue
-    def propagate
+    def propagate(options = {})
+      force = options[:force] || false
+      against = options[:against]   # default to nil
       # If not saved, then we can't have anything else that depends on us.
       return true if not persisted?
 
       # If we have exports defined, then we only propagate if something that's
       # exported changes.
-      if obey_exports?
-        self_diff = diff  # cache the result of the diff method
+      if obey_exports? and !force
+        self_diff = diff :against => against  # cache the result of the diff method
         return true unless 
           exports.select{|exp| self_diff.changed? exp}.length > 0
       end
@@ -140,7 +146,8 @@ module MongoPercolator
         # If we (the parent) have changed in ways that are meaningful to this
         # operation, then we cause the relevant computed properties to be 
         # recomputed. 
-        op.expire! unless op.relevant_changes_for(self).empty?
+        op.expire! if force or
+          !op.relevant_changes_for(self, :against => against).empty?
       end
       return true
     end

@@ -11,6 +11,7 @@ end
 module MongoPercolator
   # Used when something is missing from the mongo database
   class MissingData < StandardError; end
+  class DatabaseError < StandardError; end
   class Collision < StandardError; end
   class ShouldBeImpossible < StandardError; end
   # Used when someone incorrectly uses the DSL

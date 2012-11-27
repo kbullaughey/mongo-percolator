@@ -115,6 +115,23 @@ describe "MongoPercolator Node & Operation integration (2)" do
         @node.sum.should == 5.49
       end
 
+      it "recomputes when propagating and giving the diff a modified object" do
+        terms = @node.compute.sum_terms
+        term_copy = terms[0].to_mongo
+        # This set circumvents percolation
+        terms[0].set :value => 6.99
+        # Propagation doesn't cause recomputation becuase nothing looks changed.
+        terms[0].reload
+        terms[0].propagate
+        MongoPercolator.percolate
+        @node.reload
+        @node.sum.should == 1.0
+        terms[0].propagate :against => term_copy
+        MongoPercolator.percolate
+        @node.reload
+        @node.sum.should == 7.49
+      end
+
       it "calls perform if a parent is destroyed" do
         @node.sum.should == 1.0
         terms = @node.compute.sum_terms

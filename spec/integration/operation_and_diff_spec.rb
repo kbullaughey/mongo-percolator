@@ -61,6 +61,15 @@ describe "Diffs on operation parents" do
       @queen.description['name'] = "Barbara"
       @op.relevant_changes_for(@queen).should include('queen.description.name')
     end
+
+    it "can find relevant changes against any object" do
+      original = @queen.to_mongo
+      modified = @queen.to_mongo
+      modified['description'] = modified['description'].dup
+      modified['description']['name'] = "Sue"
+      @nest.op.relevant_changes_for(@queen, :against => original).should be_empty
+      @nest.op.relevant_changes_for(@queen, :against => modified).should_not be_empty
+    end
   end
 end
 

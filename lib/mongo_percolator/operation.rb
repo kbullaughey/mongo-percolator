@@ -8,7 +8,7 @@ module MongoPercolator
   class Operation
     include MongoMapper::Document
     include Addressable
-    include FindAndModifyPlugin
+    plugin FindAndModifyPlugin
 
     extend Forwardable
     # The instane method self_class returns self.class, so I can have instance
@@ -440,13 +440,16 @@ module MongoPercolator
     # and for which the parent has changed since it was last persisted.
     #
     # @param parent [MongoMapper::Document] 
-    def relevant_changes_for(parent)
+    # @param options [Hash] The following options are possible:
+    #   * :against => [Hash|Node] Optional thing to make a diff against.
+    def relevant_changes_for(parent, options = {})
+      against = options[:against]   # defaults to nil
       raise ArgumentError.new("Not a parent").add(to_mongo) unless
         parent? parent
       raise ArgumentError.new("No matching parent").add(to_mongo) if
         parent_label(parent).nil?
       deps = dependencies.select &match_head(parent_label parent)
-      parent_diff = parent.diff
+      parent_diff = parent.diff :against => against
       deps.select { |dep| parent_diff.changed? tail(dep) }
     end
 
