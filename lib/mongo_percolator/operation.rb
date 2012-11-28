@@ -101,10 +101,22 @@ module MongoPercolator
       #   reader method name if :class => ClassName is given.
       # @param options [Hash] An optional options hash:
       #   :class [Class] - The class of the parent if not inferrable from label.
+      #   :polymorphic [Boolean] - Whether type polymophism should be allowed.
       def declare_parent(reader, options={})
         ensure_is_subclass
         reader = reader.to_sym if reader.is_a? String
-        klass = guess_class(reader, options)
+
+        # We allow polymorphism on single parents only. It causes a key to be added
+        # to the operation <parent_name>_type, which will store the type
+        polymorphic = !!options[:polymorphic] || false
+
+        if polymorphic
+          key "#{reader}_type", String
+          raise ArgumentError, "class shouldn't be given if polymorphic" unless
+            options[:class].nil?
+        else
+          klass = guess_class(reader, options)
+        end
 
         # These readers and writers are closures, and so they have access
         # to the local scope, which includes the above three variables.
@@ -116,11 +128,17 @@ module MongoPercolator
           raise TypeError.new("expecting singular parent").add(to_mongo) if
             ids.length > 1
           return nil if ids.first.nil?
+
           if instance_variable_defined? ivar(reader)
             cached = instance_variable_get ivar(reader)
             # Use cached copy if the id hasn't changed
             return cached if cached.id == ids.first
           end
+
+          # Look up our class if polymorphic 
+          klass = self["#{reader}_type"].constantize if polymorphic
+
+          # Instantiate the object.
           result = klass.send :find, ids.first
           raise MissingData.new("Failed to find parent #{reader}").add(to_mongo) if
             result.nil?
@@ -137,11 +155,13 @@ module MongoPercolator
         
         # Define a writer method
         define_method "#{reader}="do |object|
+          self["#{reader}_type"] = object.class.to_s
           update_ids_using_objects(reader, [object])
         end
 
         # Define a writer for the id of the single parent
         define_method "#{reader}_id=" do |id|
+          raise RuntimeError, "Cannot assign by id if polymorphic" if polymorphic
           update_ids(reader, [id])
         end
       end
@@ -158,6 +178,8 @@ module MongoPercolator
       def declare_parents(reader, options={})
         ensure_is_subclass
         reader = reader.to_sym if reader.is_a? String
+        raise ArgumentError, "polymorphic not allowed for plural parents" if
+          options[:polymorphic]
         klass = guess_class(reader, options)
 
         # These readers and writers are closures, and so they have access
