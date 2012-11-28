@@ -94,6 +94,7 @@ module MongoMapper
                 # the differences matter to the dependent operations.
                 node.propagate :against => original
               end
+              node
             end
           end
         end

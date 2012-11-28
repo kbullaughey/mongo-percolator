@@ -37,5 +37,11 @@ describe "Sci Hacks" do
       doc.x.should == 33
       doc.y.should == 9
     end
+
+    it "retuns the node from the upsert" do
+      doc = SciHackTest.where(:name => "Major Major").upsert :$set => {:x => 22}
+      SciHackTest.count.should == 1
+      doc.id.should == SciHackTest.first.id
+    end
   end
 end
