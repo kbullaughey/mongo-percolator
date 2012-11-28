@@ -225,7 +225,13 @@ module MongoPercolator
       end
 
       # Attach this as an external observer of target_class. 
+      # @param target_class [Class|Symbol|String] class to be observed. If a
+      #   string or symbol is given, it needs to resolve to the full class
+      #   name.
       def observe_creation_of(target_class)
+        target_class = target_class.to_s if target_class.is_a? Symbol
+        target_class = target_class.camelize.constantize if target_class.is_a? String
+
         # Make the target instance accessible in via an association
         # attach(target_class)
         attach
