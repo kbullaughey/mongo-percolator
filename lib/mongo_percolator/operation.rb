@@ -155,7 +155,7 @@ module MongoPercolator
         
         # Define a writer method
         define_method "#{reader}="do |object|
-          self["#{reader}_type"] = object.class.to_s
+          self["#{reader}_type"] = object.class.to_s if polymorphic
           update_ids_using_objects(reader, [object])
         end
 
