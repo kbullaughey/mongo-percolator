@@ -372,8 +372,9 @@ module MongoPercolator
       end
 
       def ensure_is_subclass
-        raise RuntimeError, "Operation must be subclassed" if 
-          self == MongoPercolator::Operation
+        if self == MongoPercolator::Operation
+          raise RuntimeError, "Operation must be subclassed"
+        end
       end
 
       def singular(label, options)
