@@ -46,7 +46,8 @@ module MongoPercolator
       state :error
 
       event(:release) { transition :held => :available }
-      event(:choke) {transition :held => :error }
+      event(:choke) { transition :held => :error }
+      event(:revive) { transition :error => :available }
       # There are two ways to acquire an operation. One is if it hasn't been 
       # persisted, we can use this transition. Otherwise we need to call 
       # acquire (the class method).
