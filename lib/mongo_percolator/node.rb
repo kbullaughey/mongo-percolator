@@ -66,13 +66,25 @@ module MongoPercolator
       end
     end
 
-    module ClassMethods
+    module ClassMethodsLate
       # This will be executed when this module is included in a class, after 
       # MongoMapper::Document is included.
       def setup
         plugin FindAndModifyPlugin
         before_save :propagate
         after_destroy :propagate_destroy
+      end
+
+      # This is a hack to fix find when given multiple ids, it seems that
+      # sometimes if there are duplicates, only unique objects are returned.
+      def find(*args)
+        res = super
+        # The fix is only needed if given an array of ObjectIds.
+        if args.length == 1 and args.first.is_a? Array
+          res_hash = Hash[res.collect{|doc| [doc.id, doc]}]
+          res = args.first.collect{|id| res_hash[id]}
+        end
+        res
       end
 
       # Check if exports should be used for making decisions about propagation.
@@ -106,8 +118,15 @@ module MongoPercolator
       # defer it until MongoPercolator::Node itself is included because I
       # think MongoMapper::Document assumes that it's getting included into a 
       # class and not another module.
-      instance_eval { include MongoMapper::Document }
+      instance_eval do 
+        include MongoMapper::Document
+      end
       extend DSL
+      # If I had named the module ClassMethods, it would have been included by
+      # ActiveSupport::Concern, but the methods would have been overridden by 
+      # MongoMapper::Document, whereas I want these to override those, so I
+      # used a different name.
+      extend ClassMethodsLate
       common_setup
       setup
     end

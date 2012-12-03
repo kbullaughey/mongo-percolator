@@ -85,6 +85,12 @@ describe "MongoPercolator::Node unit" do
   it "can see the defined exports" do
     NodeUnitTestExports1.exports.should == ['visible']
   end
+
+  it "reduplicates on find" do
+    doc = NodeUnitTestExports1.create!
+    duplicates = [doc] * 2
+    NodeUnitTestExports1.find(duplicates.collect(&:id)).length.should == 2
+  end
 end
 
 # END
