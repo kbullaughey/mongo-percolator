@@ -19,6 +19,15 @@ describe MongoPercolator::Guide do
     @guide.interrupt!
     @guide.interrupted?.should be_true
   end
+
+  it "starts off with a nil percolation time" do
+    @guide.percolation_time.should be_nil
+  end
+
+  it "knows how long it percolated for" do
+    @guide.percolate
+    @guide.percolation_time.should > 0
+  end
 end
 
 # END
