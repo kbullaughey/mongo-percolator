@@ -27,8 +27,10 @@ module MongoPercolator
       self.started_at = Time.now.utc
       loop do
         break if interrupted?
-        Operation.acquire_and_perform or break
+        res = Operation.acquire_and_perform
+        break unless res
         self.operations += 1
+        break if operations >= 100
       end
       self.ended_at = Time.now.utc
       self
