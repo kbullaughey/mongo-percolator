@@ -167,7 +167,7 @@ describe "MongoPercolator::Operation unit" do
 
   pending "Check that perform! fails if the operation is not held"
 
-  context "has an obsolete parent" do
+  context "has an obsolete parent and normal parent" do
     before :each do
       @a = AnimalsUnitTest.new(:wild => 'fugu')
       @op = RealOpUnit.new :animals => @a
@@ -191,6 +191,18 @@ describe "MongoPercolator::Operation unit" do
       reinstantiated = MongoPercolator::ParentMeta.from_mongo op2.parents.to_mongo
       reinstantiated.parents.keys.should == ["animals"]
     end
+  end
+
+  it "gracefully handles an obsolete parent when it has no parents" do
+    @op = RealOpUnit.new
+    @op.save.should be_true
+    @raw_doc = RealOpUnit.collection.find_one
+    @raw_doc['parents'] = {}
+    @raw_doc['parents']['ids'] = [BSON::ObjectId.new]
+    @raw_doc['parents']['meta'] = {'old_parent' => 1}
+    RealOpUnit.collection.save(@raw_doc, {})
+    op2 = RealOpUnit.first
+    op2.animals.should be_nil
   end
 
   describe "RealOpUnit" do
