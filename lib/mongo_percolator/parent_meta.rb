@@ -114,6 +114,12 @@ module MongoPercolator
       parent = parent.to_s
       @parents.include? parent
     end
+
+    # Remove a parent.
+    # @param parent [String] Parent name
+    def remove(parent)
+      @parents.delete parent
+    end
   end
 end
 

@@ -48,12 +48,7 @@ describe "MongoPercolator::Operation unit" do
     end
   end
 
-  before :each do
-    RealOpUnit.remove
-    LocationsUnitTest.remove
-    AnimalsUnitTest.remove
-    NodeWithAbbreviatedSyntax.remove
-  end
+  before(:each) { clean_db }
 
   describe "DSL is limited to subclasses" do
     it "#parent" do
@@ -171,6 +166,32 @@ describe "MongoPercolator::Operation unit" do
   end
 
   pending "Check that perform! fails if the operation is not held"
+
+  context "has an obsolete parent" do
+    before :each do
+      @a = AnimalsUnitTest.new(:wild => 'fugu')
+      @op = RealOpUnit.new :animals => @a
+      @op.save.should be_true
+      @raw_doc = RealOpUnit.collection.find_one
+      @raw_doc['parents']['ids'].first.should == @op.animals.id
+      @raw_doc['parents']['ids'].push BSON::ObjectId.new
+      @raw_doc['parents']['meta']['old_parent'] = 1
+      RealOpUnit.collection.save(@raw_doc, {})
+    end
+
+    it "gracefully handles obsolete parents" do
+      op2 = RealOpUnit.first
+      op2.animals.id.should == @a.id
+      expect { op2.old_parent }.to raise_error(NoMethodError)
+    end
+
+    it "can remove the old parent" do
+      op2 = RealOpUnit.first
+      op2.parents.remove 'old_parent'
+      reinstantiated = MongoPercolator::ParentMeta.from_mongo op2.parents.to_mongo
+      reinstantiated.parents.keys.should == ["animals"]
+    end
+  end
 
   describe "RealOpUnit" do
     it "can be finalized" do
@@ -308,6 +329,7 @@ describe "MongoPercolator::Operation unit" do
         data['locations_unit_tests[].country'].should be_kind_of(Array)
         data['locations_unit_tests[].country'].should == %w(france russia)
       end
+
     end
   end
 end
