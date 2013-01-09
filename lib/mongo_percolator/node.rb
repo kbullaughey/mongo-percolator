@@ -148,10 +148,15 @@ module MongoPercolator
     #   * :against => [Hash] - provide a hash against which to make a diff
     # @return [Boolean] whether the callback chain should continue
     def propagate(options = {})
-      force = options[:force] || false
-      against = options[:against]   # default to nil
       # If not saved, then we can't have anything else that depends on us.
       return true if not persisted?
+
+      force = options[:force] || false
+
+      # relevant_changes_for() will make a diff against the persisted copy of
+      # ourselves. So rather than look up our persisted copy each time, we provide
+      # something to diff against, unless against was already provided.
+      against = options[:against] || self.class.find(id)
 
       # If we have exports defined, then we only propagate if something that's
       # exported changes.
