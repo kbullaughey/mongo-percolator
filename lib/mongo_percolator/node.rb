@@ -167,17 +167,27 @@ module MongoPercolator
       end
 
       # Since I only need the class to check dependencies, I don't instantiate the
-      # operation until I need to, as this is much faster.
+      # operation until I need to, as this is much faster. Since whether an operation
+      # depends on a change in a parent is class-specific, I can cache the results
+      # for each class, so I don't need to perform the the check every instance of
+      # the same operation class.
       opts = {:fields => %w(_id _type parents)}
+      affected_operation_classes_cache = {}
       MongoPercolator::Operation.collection.find({'parents.ids' => id}, opts).
           each do |op_doc|
         # If we (the parent) have changed in ways that are meaningful to this
         # operation, then we cause the relevant computed properties to be 
         # recomputed. 
-        op_class = op_doc['_type'].constantize
-        parent_label = op_class.parent_label id, op_doc['parents']
-        if force or !op_class.relevant_changes_for(parent_label, self,
-            :against => against).empty?
+        op_class_name = op_doc['_type']
+        unless force
+          affected_operation_classes_cache[op_class_name] ||= begin
+            op_class = op_class_name.constantize
+            parent_label = op_class.parent_label id, op_doc['parents']
+            !op_class.relevant_changes_for(parent_label, self, :against => against).empty?
+          end
+        end
+
+        if force or affected_operation_classes_cache[op_class_name]
           op = MongoPercolator::Operation.from_mongo(op_doc)
           op.expire!
         end
