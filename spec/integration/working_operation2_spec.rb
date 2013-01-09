@@ -44,10 +44,7 @@ describe "MongoPercolator Node & Operation integration (2)" do
   end
 
   before :each do
-    SumTerm.remove
-    MongoPercolator::Operation.remove
-    Summation.remove
-    SummationWithStringParents.remove
+    clean_db
   end
 
   describe "Summation" do

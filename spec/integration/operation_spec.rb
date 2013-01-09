@@ -1,6 +1,8 @@
 require 'spec_helper'
 
 describe "Operation integration" do
+  before(:each) { clean_db }
+
   it "raises an error if a dependency hasn't been defined (singular)" do
     class NodeWithInvalidOp2
       include MongoPercolator::Node

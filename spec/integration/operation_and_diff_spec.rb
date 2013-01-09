@@ -2,7 +2,7 @@ require 'spec_helper'
 
 describe "Diffs on operation parents" do
   before :all do
-    class Queen
+    class Queen2
       include MongoPercolator::Node
       key :description, Hash
       
@@ -19,7 +19,7 @@ describe "Diffs on operation parents" do
     class Nest1
       class Op < MongoPercolator::Operation
         emit {}
-        declare_parent :queen
+        declare_parent :queen, :class => Queen2
         depends_on 'queen.description.name'
       end
       include MongoPercolator::Node
@@ -29,7 +29,7 @@ describe "Diffs on operation parents" do
     class Nest2
       class Op < MongoPercolator::Operation
         emit {}
-        declare_parent :queen
+        declare_parent :queen, :class => Queen2
         depends_on 'queen.description.body_segments.triats.color'
       end
       include MongoPercolator::Node
@@ -39,9 +39,8 @@ describe "Diffs on operation parents" do
   end
 
   before :each do
-    Queen.remove
-    MongoPercolator::Operation.remove
-    @queen = Queen.new :description => Queen.starter
+    clean_db
+    @queen = Queen2.new :description => Queen2.starter
     @queen.save!
   end
 

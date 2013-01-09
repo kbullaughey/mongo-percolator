@@ -35,10 +35,7 @@ describe "MongoPercolator Node & Operation integration" do
   end
 
   before :each do
-    AnimalsIntegration.remove
-    MongoPercolator::Operation.remove
-    SomeNode.remove
-    SomeOtherNode.remove
+    clean_db
   end
 
   describe "RealOp" do

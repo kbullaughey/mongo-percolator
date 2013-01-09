@@ -20,6 +20,8 @@ describe "MongoPercolator::Node unit" do
       versioned!
     end
   end
+  
+  before(:each) { clean_db }
 
   it "can tell a node is versioned" do
     NodeUnitTestExports1.versioned?.should be_true

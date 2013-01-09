@@ -23,6 +23,7 @@ describe MongoPercolator::Addressable::Diff do
 
   before :each do
     Hive.remove
+    clean_db
   end
 
   context "a mongoable, but non-persisted object" do
