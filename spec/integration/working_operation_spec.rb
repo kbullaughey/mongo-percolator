@@ -218,6 +218,16 @@ describe "MongoPercolator Node & Operation integration" do
           @animals.save
           MongoPercolator.guide.percolate.operations.should == 1
         end
+
+        it "uses the cache when computing dependencies" do
+          node2 = SomeNode.new
+          op2 = RealOp.new :animals => @animals
+          node2.real_op = op2
+          op2.save!
+          node2.save!
+          RealOp.should_receive(:relevant_changes_for).once.and_call_original
+          @animals.save!
+        end
       end
     end
   end

@@ -179,14 +179,13 @@ module MongoPercolator
         # operation, then we cause the relevant computed properties to be 
         # recomputed. 
         op_class_name = op_doc['_type']
-        should_use_cache = !affected_operation_classes_cache[op_class_name].nil?
-        puts "using cache" if should_use_cache
         unless force
-          affected_operation_classes_cache[op_class_name] ||= begin
-            generated_entry = true
+          if affected_operation_classes_cache[op_class_name].nil?
             op_class = op_class_name.constantize
             parent_label = op_class.parent_label id, op_doc['parents']
-            !op_class.relevant_changes_for(parent_label, self, :against => against).empty?
+            changes = op_class.relevant_changes_for parent_label, self,
+              :against => against
+            affected_operation_classes_cache[op_class_name] = !changes.empty?
           end
         end
 
