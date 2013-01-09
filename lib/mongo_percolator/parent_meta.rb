@@ -29,7 +29,7 @@ module MongoPercolator
       raise TypeError, "Expecting a hash" unless data.kind_of? Hash
 
       # Store parent names as strings
-      data.stringify_keys!
+      data = data.stringify_keys
       data['ids'] ||= []
       data['meta'] ||= {}
 
@@ -41,7 +41,7 @@ module MongoPercolator
       raise ArgumentError, "Non-unique keys when stringified" if
         parent_names.length != parent_names.uniq.length
       # Now we can safely stringify
-      data['meta'].stringify_keys!
+      data['meta'] = data['meta'].stringify_keys
 
       # Make sure all the counts are numeric, and that we have the right nubmer
       # of ids.
@@ -53,8 +53,9 @@ module MongoPercolator
       # Combine the list of parents and their counts with the list of ids to
       # make a hash of parent ids.
       @parents = {}
+      ids_copy = data['ids'].dup
       data['meta'].keys.sort.each do |parent|
-        @parents[parent] = data['ids'].shift data['meta'][parent]
+        @parents[parent] = ids_copy.shift data['meta'][parent]
       end
 
       # Keep track of the parent labels, this will get frozen to prevent more 

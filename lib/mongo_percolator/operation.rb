@@ -347,6 +347,28 @@ module MongoPercolator
         @emit
       end
 
+      # Return a list of this operation class's dependencies which depend on
+      # parent, and for which the parent has changed since it was last persisted.
+      #
+      # This class verion, is somewhat awkward, and is meant to be used when one
+      # wants to check for relevant changes without instantiating the operation,
+      # which is one extra step that slows things down. Generally one will want 
+      # to use the instance version of this function.
+      #
+      # @param label [String] label for parent in operation class
+      # @param parent [MongoMapper::Document] 
+      # @param options [Hash] The following options are possible:
+      #   * :against => [Hash|Node] Optional thing to make a diff against.
+      def relevant_changes_for(label, parent, options = {})
+        against = options[:against]   # defaults to nil
+        raise ArgumentError.new("No matching parent").add(:label => label,
+          :parent => parent.to_mongo, :options => options) unless 
+          parent_labels.include?(label)
+        deps = dependencies.select &Addressable.match_head(label)
+        parent_diff = parent.diff :against => against
+        deps.select { |dep| parent_diff.changed? Addressable.tail(dep) }
+      end
+
       # Return the array of parent labels
       def parent_labels
         ensure_is_subclass
@@ -381,6 +403,21 @@ module MongoPercolator
       def singular(label, options)
         options[:no_singularize] ? label : label.to_s.singularize.to_sym
       end
+
+      # The label for a parent class is not necessarily the underscore version of
+      # the class name, so we look up the label.
+      #
+      # @param parent_id [BSON::ObjectId]
+      # @param parents [ParentMeta | Hash]
+      # @return [Symbol] the label for the parent
+      def parent_label(parent_id, parents)
+        parents = ParentMeta.from_mongo(parents) if parents.kind_of? Hash
+        position = parents.ids.index parent_id
+        raise ArgumentError.new("parent not found").add(:parent_id => parent_id, 
+          :parents => parents.to_mongo) if position.nil?
+        parents.parent_at(position).to_sym
+      end
+
 
       # This is a hack to prevent overwriting state information that may have changed
       # since the object was read. I need to inject this at such a low level so
@@ -466,23 +503,6 @@ module MongoPercolator
       BSON::ObjectId.new
     end
 
-    # Return a list of this operation's dependencies which depend on parent,
-    # and for which the parent has changed since it was last persisted.
-    #
-    # @param parent [MongoMapper::Document] 
-    # @param options [Hash] The following options are possible:
-    #   * :against => [Hash|Node] Optional thing to make a diff against.
-    def relevant_changes_for(parent, options = {})
-      against = options[:against]   # defaults to nil
-      raise ArgumentError.new("Not a parent").add(to_mongo) unless
-        parent? parent
-      raise ArgumentError.new("No matching parent").add(to_mongo) if
-        parent_label(parent).nil?
-      deps = dependencies.select &match_head(parent_label parent)
-      parent_diff = parent.diff :against => against
-      deps.select { |dep| parent_diff.changed? tail(dep) }
-    end
-
     # Collect all the data required to perform the operation. This instance
     # method requires that all the parent associations on which computed 
     # properties depend are set and available on the instance.
@@ -490,6 +510,16 @@ module MongoPercolator
     # @return [Hash] data passed to emit
     def gather
       Hash[dependencies.collect { |dep| [dep, fetch(dep)] }]
+    end
+
+    # Return a list of this operation class's dependencies which depend on
+    # parent, and for which the parent has changed since it was last persisted.
+    #
+    # @param parent [MongoMapper::Document] 
+    # @param options [Hash] The following options are possible:
+    #   * :against => [Hash|Node] Optional thing to make a diff against.
+    def relevant_changes_for(parent, options = {})
+      self_class.relevant_changes_for parent_label(parent), parent, options
     end
 
     # Indicate whether the object is a parent of this operation.
@@ -511,9 +541,7 @@ module MongoPercolator
     # @param parent [MongoMapper::Document]
     # @return [Symbol] the label for the parent
     def parent_label(parent)
-      position = parent_ids.index parent.id
-      raise ArgumentError.new("parent not found").add(to_mongo) if position.nil?
-      parents.parent_at(position).to_sym
+      self_class.parent_label parent.id, parents
     end
 
     # Remove the parent given by parent_id. There's not guarentee that emit will

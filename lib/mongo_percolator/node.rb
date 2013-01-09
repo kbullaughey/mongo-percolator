@@ -166,12 +166,21 @@ module MongoPercolator
           exports.select{|exp| self_diff.changed? exp}.length > 0
       end
 
-      MongoPercolator::Operation.where('parents.ids' => id).find_each do |op|
+      # Since I only need the class to check dependencies, I don't instantiate the
+      # operation until I need to, as this is much faster.
+      opts = {:fields => %w(_id _type parents)}
+      MongoPercolator::Operation.collection.find({'parents.ids' => id}, opts).
+          each do |op_doc|
         # If we (the parent) have changed in ways that are meaningful to this
         # operation, then we cause the relevant computed properties to be 
         # recomputed. 
-        op.expire! if force or
-          !op.relevant_changes_for(self, :against => against).empty?
+        op_class = op_doc['_type'].constantize
+        parent_label = op_class.parent_label id, op_doc['parents']
+        if force or !op_class.relevant_changes_for(parent_label, self,
+            :against => against).empty?
+          op = MongoPercolator::Operation.from_mongo(op_doc)
+          op.expire!
+        end
       end
       return true
     end
