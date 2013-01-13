@@ -87,8 +87,9 @@ module MongoMapper
                 raise MongoPercolator::MissingData.new("Missing updated node").
                   add(:id => original.id) if node.nil?
                 # Trigger the save callbacks this won't actually cause
-                # propagation, unfortunately, it does require additional
-                # database access and construction of a diff.
+                # propagation because the changes were made with find_and_modify.
+                # Unfortunately, it does require additional database access and
+                # construction of a diff.
                 node.save!
                 # Propagate diffing against the original document, so that percolation only happens if
                 # the differences matter to the dependent operations.
