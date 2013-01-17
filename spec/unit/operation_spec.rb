@@ -101,7 +101,7 @@ describe "MongoPercolator::Operation unit" do
     it "adds the reader to the parent_labels set" do
       goop_class = Class
       stub_const("Goop", goop_class)
-      c = RealOpUnfrozen.guess_class(:goop, {})
+      c = RealOpUnfrozen.declare_parent :goop
       RealOpUnfrozen.parent_labels.should include(:goop)
     end
   end
