@@ -106,6 +106,7 @@ module MongoPercolator
       def declare_parent(reader, options={})
         ensure_is_subclass
         reader = reader.to_sym if reader.is_a? String
+        parent_labels.add reader
 
         # We allow polymorphism on single parents only. It causes a key to be added
         # to the operation <parent_name>_type, which will store the type
@@ -179,6 +180,7 @@ module MongoPercolator
       def declare_parents(reader, options={})
         ensure_is_subclass
         reader = reader.to_sym if reader.is_a? String
+        parent_labels.add reader
         raise ArgumentError, "polymorphic not allowed for plural parents" if
           options[:polymorphic]
         klass = guess_class(reader, options)
@@ -327,10 +329,6 @@ module MongoPercolator
         end
         raise ArgumentError, "Expecting Class" unless klass.kind_of? Class
 
-        # I take note of all the parent labels defined
-        @parent_labels ||= Set.new
-        @parent_labels.add reader
-
         klass
       end
 
@@ -361,9 +359,10 @@ module MongoPercolator
       #   * :against => [Hash|Node] Optional thing to make a diff against.
       def relevant_changes_for(label, parent, options = {})
         against = options[:against]   # defaults to nil
-        raise ArgumentError.new("No matching parent").add(:label => label,
-          :parent => parent.to_mongo, :options => options) unless 
-          parent_labels.include?(label)
+        unless parent_labels.include?(label)
+          raise ArgumentError.new("No matching parent").add(:label => label,
+            :parent => parent.to_mongo, :options => options)
+        end
         deps = dependencies.select &Addressable.match_head(label)
         parent_diff = parent.diff :against => against
         deps.select { |dep| parent_diff.changed? Addressable.tail(dep) }
@@ -372,6 +371,7 @@ module MongoPercolator
       # Return the array of parent labels
       def parent_labels
         ensure_is_subclass
+        @parent_labels ||= Set.new
         @parent_labels
       end
 
@@ -381,7 +381,7 @@ module MongoPercolator
         ensure_is_subclass
         unless @finalized == true
           raise NotImplementedError, "Need emit" if @emit.nil?
-          @parent_labels.freeze
+          parent_labels.freeze
           @finalized = true
         end
       end
@@ -625,12 +625,21 @@ module MongoPercolator
             gathered[addr].length > 1
           gathered[addr].first
         end
+
+        # I provide access to the node's operation we're emitting from via this
+        # singleton method. This is to make sure if we modify the operation,
+        # we save the modified copy.
+        op_instance = self
+        given_node.define_singleton_method :self_op do
+          op_instance
+        end
   
         # Execute the emit block in the context of the node, and save it.
         run_callbacks(:emit) { given_node.instance_eval &emit_block }
         return if destroyed?
   
         given_node.save!
+        save!
         release!
       rescue StandardError => e
         # Mark the operation as in the error state, and re-raise the error
