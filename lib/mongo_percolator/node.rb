@@ -173,8 +173,11 @@ module MongoPercolator
       # the same operation class.
       opts = {:fields => %w(_id _type parents)}
       affected_operation_classes_cache = {}
-      MongoPercolator::Operation.collection.find({'parents.ids' => id}, opts).
-          each do |op_doc|
+
+      # Only expire operations that have id as a parent, and which are not yet
+      # already expired.
+      selector = {'parents.ids' => id, 'stale' => false}
+      MongoPercolator::Operation.collection.find(selector, opts).each do |op_doc|
         # If we (the parent) have changed in ways that are meaningful to this
         # operation, then we cause the relevant computed properties to be 
         # recomputed. 
