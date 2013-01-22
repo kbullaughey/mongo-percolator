@@ -109,7 +109,6 @@ module MongoPercolator
       def versioned!
         @versioned = true
         key :version, BSON::ObjectId, :default => lambda { BSON::ObjectId.new }
-        before_save { self.version = BSON::ObjectId.new }
       end
     end
     
@@ -136,7 +135,13 @@ module MongoPercolator
     #-----------------
 
     def versioned?
-      !self.version.nil?
+      respond_to?(:version) && !version.nil?
+    end
+
+
+    # Update the version identifier
+    def bump_version
+      self.version = BSON::ObjectId.new
     end
 
     # Check to see if any other nodes depend on this one and if so, cause them 
@@ -148,6 +153,7 @@ module MongoPercolator
     #   * :against => [Hash] - provide a hash against which to make a diff
     # @return [Boolean] whether the callback chain should continue
     def propagate(options = {})
+      bump_version if versioned?
       # If not saved, then we can't have anything else that depends on us.
       return true if not persisted?
 
