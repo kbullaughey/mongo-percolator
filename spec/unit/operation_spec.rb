@@ -135,6 +135,7 @@ describe "MongoPercolator::Operation unit" do
   it "can be created using the create_* convenience function" do
     node = NodeWithAbbreviatedSyntax.create
     node.create_op
+    node.op.should_not be_nil
     node.was_run.should be_false
     node.op.perform!
     node.reload
