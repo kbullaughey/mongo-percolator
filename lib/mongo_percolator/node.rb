@@ -16,21 +16,9 @@ module MongoPercolator
         raise ArgumentError, "Malformed label" unless 
           label =~ /^[a-z][A-Za-z0-9_?!]*$/
 
-        # Declare the first direction of the association
+        # Declare both directions of the association
         one label, :class => klass, :as => :node, :dependent => :destroy
-
-        # Declare the other direction of the association
-        # klass.attach self
         klass.attach
-
-        # Define a convenience method to create the operation
-        define_method "create_#{label}" do |*args|
-          arg_hash = args.first || {}
-          op = klass.new arg_hash
-          raise RuntimeError, "Node should have id" if id.nil?
-          op.node = self
-          op.save!
-        end
 
         klass.finalize
       end
