@@ -16,8 +16,10 @@ module MongoPercolator
         raise ArgumentError, "Malformed label" unless 
           label =~ /^[a-z][A-Za-z0-9_?!]*$/
 
-        # Declare both directions of the association
+        # Declare the first direction of the association
         one label, :class => klass, :as => :node, :dependent => :destroy
+
+        # Declare the other direction of the association
         klass.attach
 
         klass.finalize
