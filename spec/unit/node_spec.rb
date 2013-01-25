@@ -19,6 +19,13 @@ describe "MongoPercolator::Node unit" do
       export 'visible'
       versioned!
     end
+
+    class NodeUnitWithCallbacks
+      include MongoPercolator::Node
+      key :c, String
+      before_save { self.c += " save" }
+      before_propagation { self.c += " propagate" }
+    end
   end
   
   before(:each) { clean_db }
@@ -92,6 +99,13 @@ describe "MongoPercolator::Node unit" do
     doc = NodeUnitTestExports1.create!
     duplicates = [doc] * 2
     NodeUnitTestExports1.find(duplicates.collect(&:id)).length.should == 2
+  end
+
+  it "executes before_propagation callback before before_save" do
+    doc = NodeUnitWithCallbacks.new
+    doc.c = "start"
+    doc.save!
+    doc.c.should == "start propagate save"
   end
 end
 

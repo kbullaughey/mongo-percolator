@@ -60,6 +60,13 @@ module MongoPercolator
       # This will be executed when this module is included in a class, after 
       # MongoMapper::Document is included.
       def setup
+        extend ActiveSupport::Callbacks
+        # I cause propagation with a before_save handler. However, this creates a
+        # problem becuase subsequent before_save handlers will execute after
+        # propagation. For this reason, I create another set of callbacks for
+        # before, after, and around propagation.
+        define_model_callbacks :propagation
+
         plugin FindAndModifyPlugin
         before_save :propagate
         after_destroy :propagate_destroy
@@ -143,54 +150,55 @@ module MongoPercolator
     #   * :against => [Hash] - provide a hash against which to make a diff
     # @return [Boolean] whether the callback chain should continue
     def propagate(options = {})
-      bump_version if versioned?
-      # If not saved, then we can't have anything else that depends on us.
-      return true if not persisted?
-
-      force = options[:force] || false
-
-      # relevant_changes_for() will make a diff against the persisted copy of
-      # ourselves. So rather than look up our persisted copy each time, we provide
-      # something to diff against, unless against was already provided.
-      against = options[:against] || self.class.find(id)
-
-      # If we have exports defined, then we only propagate if something that's
-      # exported changes.
-      if obey_exports? and !force
-        self_diff = diff :against => against  # cache the result of the diff method
-        return true unless 
-          exports.select{|exp| self_diff.changed? exp}.length > 0
-      end
-
-      # Since I only need the class to check dependencies, I don't instantiate the
-      # operation until I need to, as this is much faster. Since whether an operation
-      # depends on a change in a parent is class-specific, I can cache the results
-      # for each class, so I don't need to perform the the check every instance of
-      # the same operation class.
-      opts = {:fields => %w(_id _type parents)}
-      affected_operation_classes_cache = {}
-
-      # Only expire operations that have id as a parent, and which are not yet
-      # already expired.
-      selector = {'parents.ids' => id, 'stale' => false}
-      MongoPercolator::Operation.collection.find(selector, opts).each do |op_doc|
-        # If we (the parent) have changed in ways that are meaningful to this
-        # operation, then we cause the relevant computed properties to be 
-        # recomputed. 
-        op_class_name = op_doc['_type']
-        unless force
-          if affected_operation_classes_cache[op_class_name].nil?
-            op_class = op_class_name.constantize
-            parent_label = op_class.parent_label id, op_doc['parents']
-            changes = op_class.relevant_changes_for parent_label, self,
-              :against => against
-            affected_operation_classes_cache[op_class_name] = !changes.empty?
-          end
+      run_callbacks :propagation do
+        bump_version if versioned?
+        # If not saved, then we can't have anything else that depends on us.
+        next if not persisted?
+  
+        force = options[:force] || false
+  
+        # relevant_changes_for() will make a diff against the persisted copy of
+        # ourselves. So rather than look up our persisted copy each time, we provide
+        # something to diff against, unless against was already provided.
+        against = options[:against] || self.class.find(id)
+  
+        # If we have exports defined, then we only propagate if something that's
+        # exported changes.
+        if obey_exports? and !force
+          self_diff = diff :against => against  # cache the result of the diff method
+          next unless exports.select{|exp| self_diff.changed? exp}.length > 0
         end
-
-        if force or affected_operation_classes_cache[op_class_name]
-          op = MongoPercolator::Operation.from_mongo(op_doc)
-          op.expire!
+  
+        # Since I only need the class to check dependencies, I don't instantiate the
+        # operation until I need to, as this is much faster. Since whether an operation
+        # depends on a change in a parent is class-specific, I can cache the results
+        # for each class, so I don't need to perform the the check every instance of
+        # the same operation class.
+        opts = {:fields => %w(_id _type parents)}
+        affected_operation_classes_cache = {}
+  
+        # Only expire operations that have id as a parent, and which are not yet
+        # already expired.
+        selector = {'parents.ids' => id, 'stale' => false}
+        MongoPercolator::Operation.collection.find(selector, opts).each do |op_doc|
+          # If we (the parent) have changed in ways that are meaningful to this
+          # operation, then we cause the relevant computed properties to be 
+          # recomputed. 
+          op_class_name = op_doc['_type']
+          unless force
+            if affected_operation_classes_cache[op_class_name].nil?
+              op_class = op_class_name.constantize
+              parent_label = op_class.parent_label id, op_doc['parents']
+              changes = op_class.relevant_changes_for parent_label, self,
+                :against => against
+              affected_operation_classes_cache[op_class_name] = !changes.empty?
+            end
+          end
+  
+          if force or affected_operation_classes_cache[op_class_name]
+            op = MongoPercolator::Operation.from_mongo(op_doc)
+            op.expire!
+          end
         end
       end
       return true
