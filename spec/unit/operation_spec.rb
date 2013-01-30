@@ -295,6 +295,26 @@ describe "MongoPercolator::Operation unit" do
       }.to raise_error(MongoPercolator::StateError, /persisted/)
     end
 
+    it "uses proper default sort order, obeying priorities" do
+      slow = RealOpUnit.create :priority => 2
+      fast = RealOpUnit.create :priority => 0
+      medium = RealOpUnit.create :priority => 1
+      op1 = MongoPercolator::Operation.acquire
+      op2 = MongoPercolator::Operation.acquire
+      op3 = MongoPercolator::Operation.acquire
+      op1.id.should == fast.id
+      op2.id.should == medium.id
+      op3.id.should == slow.id
+    end
+
+    it "has a priority set by default" do
+      op = RealOpUnit.create
+      persisted = RealOpUnit.first
+      op.id.should == persisted.id
+      op.priority.should == 1
+      persisted.priority.should == 1
+    end
+
     context "has parents" do
       before :each do
         @p1 = AnimalsUnitTest.new(:wild => %w(sloth binturong), :farm => ["pig"])

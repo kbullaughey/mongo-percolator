@@ -33,6 +33,13 @@ module MongoPercolator
     # while the operation is still held by the creator, or as part of an acquire.
     key :stale, Boolean, :default => true
 
+    # Lower numbers have priority over higher numbers. Think of this as 
+    # priority in line. To begin with I use the convention:
+    #   0 = executed first
+    #   1 = executed second
+    #   2 = executed third 
+    key :priority, Integer, :default => 1
+
     # Managed by state machine. This is used to get exclusive control of an operation
     # for processing or mark the operation as in an error state. The transitions
     # are only from the :held state. Because only one thread/process can hold
@@ -307,7 +314,8 @@ module MongoPercolator
       # @private
       # @param criteria [Hash] query document for selecting an operation.
       # @param sort [String|Array] sort specification appropriate for mongodb.
-      def acquire(criteria = {}, sort = 'timeid')
+      def acquire(criteria = {}, sort = nil)
+        sort ||= [['priority', Mongo::ASCENDING], ['timeid', Mongo::ASCENDING]]
         raise ArgumentError, "Expecting Hash" unless criteria.kind_of? Hash
         criteria = criteria.merge :state => 'available'
         criteria[:stale] ||= true
