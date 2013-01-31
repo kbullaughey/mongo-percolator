@@ -18,7 +18,7 @@ module MongoPercolator
     # This is faster than timestamps! and gives me one-second resolution. All
     # I use it for is sorting.
     key :timeid, BSON::ObjectId
-    after_save { set :timeid => tick }
+    before_save { self.timeid = tick }
 
     # Each time the operation is saved, I check to see if the composition
     # has changed. Although I only care about this if it's been persisted and
