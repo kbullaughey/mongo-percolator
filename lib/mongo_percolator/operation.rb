@@ -282,7 +282,7 @@ module MongoPercolator
       # @param criteria [Hash] query document for selecting an operation.
       # @param sort [String|Array] sort specification appropriate for mongodb.
       # @return [Boolean] whether or not an operation was found to perform.
-      def acquire_and_perform(criteria = {}, sort = 'timeid')
+      def acquire_and_perform(criteria = {}, sort = nil)
         op = acquire(criteria, sort) or return false
         op.instance_eval { compute }
         true
