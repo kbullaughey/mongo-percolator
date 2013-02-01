@@ -3,7 +3,7 @@ module MongoPercolator
   # and allows percolation to be interrupted in a way that allows the present 
   # operation to complete.
   class Guide
-    attr_accessor :operations, :started_at, :ended_at
+    attr_accessor :operations, :started_at, :ended_at, :priorities
     
     # Instantiate a guide.
     def initialize
@@ -28,7 +28,8 @@ module MongoPercolator
       loop do
         break if interrupted?
         res = Operation.acquire_and_perform
-        break unless res
+        break if res.nil?
+        priorities[res] = (priorities[res]||0) + 1
         self.operations += 1
         break if operations >= 100
       end
@@ -43,6 +44,7 @@ module MongoPercolator
       @ended_at = nil
       @operations = 0
       @received_interrupt = false
+      @priorities = {}
     end
 
     # Return the time spent percolating in seconds.

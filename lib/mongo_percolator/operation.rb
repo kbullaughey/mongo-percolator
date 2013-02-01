@@ -283,9 +283,9 @@ module MongoPercolator
       # @param sort [String|Array] sort specification appropriate for mongodb.
       # @return [Boolean] whether or not an operation was found to perform.
       def acquire_and_perform(criteria = {}, sort = nil)
-        op = acquire(criteria, sort) or return false
+        op = acquire(criteria, sort) or return nil
         op.instance_eval { compute }
-        true
+        op.priority
       end
 
       # Perform a particular operation
