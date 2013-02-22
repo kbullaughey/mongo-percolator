@@ -27,6 +27,16 @@ describe "MongoPercolator Node & Operation integration" do
       key :pets, Array
     end
 
+    # A node with a required property
+    class SomeNodeWithRequirement
+      include MongoPercolator::Node
+      class Op < MongoPercolator::Operation
+        emit {}
+      end
+      operation :op
+      key :name, String, :required => true
+    end
+
     class SomeOtherNode
       include MongoPercolator::Node
       operation :real_op, RealOp
@@ -87,7 +97,7 @@ describe "MongoPercolator Node & Operation integration" do
       node.should_not be_persisted
       op = node.real_op
       op.should be_persisted
-      op.should be_held
+      op.should be_nieve
       node.save.should be_true
       op.reload
       op.should be_available
@@ -132,6 +142,16 @@ describe "MongoPercolator Node & Operation integration" do
         @op.relevant_changes_for(@animals).sort.should == 
           %w(animals.farm animals.wild)
       end
+    end
+  end
+
+  describe "SomeNodeWithRequirement" do
+    it "can be performed when the op is created separately" do
+      op = SomeNodeWithRequirement::Op.new
+      node = SomeNodeWithRequirement.new :op => op
+      node.should_not be_persisted
+      node.name = "King George"
+      node.op.perform_on! node
     end
   end
 

@@ -28,10 +28,10 @@ module MongoPercolator
     # because it's just been recomputed.
     before_save { expire! if persisted? and composition_changed? }
 
-    # Operations start off held until their node is initially saved, but if
+    # Operations start off nieve until their node is initially saved; but if
     # they're created on an already-persisted node, then we can just
-    # release them immediately.
-    after_create { release! unless !respond_to?(:node) or node.nil? }
+    # mature them immediately.
+    after_create { mature! unless !respond_to?(:node) or node.nil? }
 
     # Whether or not the tracked operation is stale. It starts off stale. The
     # only circumstance this should be switched to true is just after creation
@@ -52,11 +52,13 @@ module MongoPercolator
     # (i.e., within the time the state is read and posted to the database). 
     key :state, String
     attr_protected :state
-    state_machine :state, :initial => :held, :action => :post_state do
+    state_machine :state, :initial => :nieve, :action => :post_state do
+      state :nieve
       state :available
       state :held
       state :error
 
+      event(:mature) { transition :nieve => :available }
       event(:release) { transition :held => :available }
       event(:choke) { transition :held => :error }
       event(:revive) { transition :error => :available }
@@ -64,7 +66,7 @@ module MongoPercolator
       # persisted, we can use this transition. Otherwise we need to call 
       # acquire (the class method).
       event(:acquire) do 
-        transition :held => :error, :if => lambda {|op| !op.persisted?}
+        transition [:nieve, :held] => :error, :if => lambda {|op| !op.persisted?}
       end
     end
 
@@ -307,8 +309,11 @@ module MongoPercolator
       # @param node [MongoPercolator::Node] node on which to perform the operation.
       # @param id [BSON::ObjectId] id of operation to perform.
       def perform_on!(node, id)
-        op = acquire({:_id => id}) or raise FetchFailed.new("Fetch failed").
-          add(:_id => id, :node => node)
+        criteria = {_id: id}
+        # If a node has not been persisted, then its operation will still be nieve
+        criteria.merge! state: 'nieve' unless node.persisted?
+        op = acquire(criteria) or raise FetchFailed.new("Fetch failed").
+          add(_id: id, node: node, criteria: criteria)
         # I use instance eval because compute is private, so that you're not
         # tempted to use it directly and circumvent proper state management.
         op.instance_eval { compute(node) }
@@ -507,8 +512,7 @@ module MongoPercolator
         save!
         self.class.perform_on!(given_node, id)
       else
-        # If it's not persisted, the operation should be in the held state
-        acquire! #state: 'held'
+        acquire!
         compute(given_node)
       end
     end

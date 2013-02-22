@@ -141,13 +141,13 @@ module MongoPercolator
       respond_to?(:version) && !version.nil?
     end
 
-    # Since operations are created in the 'held' position, they must be released after the
+    # Since operations are created in the 'nieve' state, they must be released after the
     # node is created. This prevents the operations from getting performed before their
     # nodes are in existence.
     def release_operations
       self.class.operation_labels.each do |op_name|
         op = send(op_name)
-        op.release! unless op.nil? or op.available?
+        op.mature! unless op.nil? or op.available?
       end
     end
 
