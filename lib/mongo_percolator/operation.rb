@@ -322,7 +322,7 @@ module MongoPercolator
       def acquire(criteria = {}, sort = nil)
         sort ||= [['priority', Mongo::ASCENDING], ['timeid', Mongo::ASCENDING]]
         raise ArgumentError, "Expecting Hash" unless criteria.kind_of? Hash
-        criteria.merge! :state => 'available'
+        criteria[:state] ||= 'available'
         criteria[:stale] ||= true
         op = {:$set => {:state => 'held', :stale => false}}
         find_and_modify :query => criteria, :update => op, :sort => sort,
@@ -507,7 +507,8 @@ module MongoPercolator
         save!
         self.class.perform_on!(given_node, id)
       else
-        acquire!
+        # If it's not persisted, the operation should be in the held state
+        acquire! #state: 'held'
         compute(given_node)
       end
     end

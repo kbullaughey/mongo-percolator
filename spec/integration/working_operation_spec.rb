@@ -13,7 +13,7 @@ describe "MongoPercolator Node & Operation integration" do
     # Set up an operation class
     class RealOp < MongoPercolator::Operation
       emit do
-        self.pets = (input('animals.farm') + input('animals.wild')).sort
+        self.pets = ((input('animals.farm')||[]) + (input('animals.wild')||[])).sort
       end
       declare_parent :animals, :class => AnimalsIntegration
       depends_on 'animals.farm'
@@ -75,6 +75,12 @@ describe "MongoPercolator Node & Operation integration" do
       node.pets.should include('baboon')
     end
 
+    it "can be performed when the op is created separately" do
+      op = RealOp.new
+      node = SomeOtherNode.new :real_op => op
+      node.real_op.perform_on! node
+    end
+
     it "sets up the node when using the create convenience function" do
       node = SomeOtherNode.new
       node.create_real_op :animals => AnimalsIntegration.new(:wild => ['baboon'])
@@ -134,6 +140,11 @@ describe "MongoPercolator Node & Operation integration" do
       @node = SomeNode.new
       @animals = AnimalsIntegration.new :wild => %w(sloth binturong dugong)
       @op = RealOp.new :animals => @animals
+    end
+
+    it "can be performed when the op is created separately and has a parent" do
+      node = SomeOtherNode.new :real_op => @op
+      node.real_op.perform_on! node
     end
 
     it "has an operation association" do
