@@ -18,10 +18,11 @@ module MongoPercolator
 
         # Declare the first direction of the association
         one label, :class => klass, :as => :node, :dependent => :destroy
+        @operations ||= []
+        @operations.push label
 
         # Declare the other direction of the association
         klass.attach
-
         klass.finalize
       end
 
@@ -70,6 +71,7 @@ module MongoPercolator
         plugin FindAndModifyPlugin
         before_save :propagate
         after_destroy :propagate_destroy
+        after_create :release_operations
       end
 
       # This is a hack to fix find when given multiple ids, it seems that
@@ -82,6 +84,10 @@ module MongoPercolator
           res = args.first.collect{|id| res_hash[id]}
         end
         res
+      end
+
+      def operation_labels
+        @operations ||= []
       end
 
       # Check if exports should be used for making decisions about propagation.
@@ -135,6 +141,15 @@ module MongoPercolator
       respond_to?(:version) && !version.nil?
     end
 
+    # Since operations are created in the 'held' position, they must be released after the
+    # node is created. This prevents the operations from getting performed before their
+    # nodes are in existence.
+    def release_operations
+      self.class.operation_labels.each do |op_name|
+        op = send(op_name)
+        op.release! unless op.nil? or op.available?
+      end
+    end
 
     # Update the version identifier
     def bump_version

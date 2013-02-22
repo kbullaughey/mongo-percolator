@@ -75,6 +75,18 @@ describe "MongoPercolator Node & Operation integration" do
       node.pets.should include('baboon')
     end
 
+    it "sets up the node when using the create convenience function" do
+      node = SomeOtherNode.new
+      node.create_real_op :animals => AnimalsIntegration.new(:wild => ['baboon'])
+      node.should_not be_persisted
+      op = node.real_op
+      op.should be_persisted
+      op.should be_held
+      node.save.should be_true
+      op.reload
+      op.should be_available
+    end
+
     it "fails when passed a malformed label" do
       expect {
         class YetAnotherNode

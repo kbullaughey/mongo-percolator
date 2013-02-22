@@ -28,6 +28,11 @@ module MongoPercolator
     # because it's just been recomputed.
     before_save { expire! if persisted? and composition_changed? }
 
+    # Operations start off held until their node is initially saved, but if
+    # they're created on an already-persisted node, then we can just
+    # release them immediately.
+    after_create { release! unless !respond_to?(:node) or node.nil? }
+
     # Whether or not the tracked operation is stale. It starts off stale. The
     # only circumstance this should be switched to true is just after creation
     # while the operation is still held by the creator, or as part of an acquire.
@@ -47,7 +52,7 @@ module MongoPercolator
     # (i.e., within the time the state is read and posted to the database). 
     key :state, String
     attr_protected :state
-    state_machine :state, :initial => :available, :action => :post_state do
+    state_machine :state, :initial => :held, :action => :post_state do
       state :available
       state :held
       state :error
@@ -317,7 +322,7 @@ module MongoPercolator
       def acquire(criteria = {}, sort = nil)
         sort ||= [['priority', Mongo::ASCENDING], ['timeid', Mongo::ASCENDING]]
         raise ArgumentError, "Expecting Hash" unless criteria.kind_of? Hash
-        criteria = criteria.merge :state => 'available'
+        criteria.merge! :state => 'available'
         criteria[:stale] ||= true
         op = {:$set => {:state => 'held', :stale => false}}
         find_and_modify :query => criteria, :update => op, :sort => sort,
