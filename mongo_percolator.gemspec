@@ -17,7 +17,7 @@ Gem::Specification.new do |gem|
   # Dependencies
   gem.add_dependency 'mongo'
   gem.add_dependency 'bson_ext'
-  gem.add_dependency 'mongo_mapper'
+  gem.add_dependency 'mongo_mapper', '0.11.1'
   gem.add_dependency 'activesupport'
   gem.add_dependency 'state_machine'
 end
