@@ -22,7 +22,6 @@ describe MongoPercolator::Addressable::Diff do
   end
 
   before :each do
-    Hive.remove
     clean_db
   end
 

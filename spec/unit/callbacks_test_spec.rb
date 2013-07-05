@@ -15,7 +15,7 @@ describe "Testing ActiveModel Callbacks in MongoMapper" do
   end
 
   before :each do
-    TempermentCallbackTest.remove
+    clean_db
     @stupid = TempermentCallbackTest.new :location => "top floor"
   end
 

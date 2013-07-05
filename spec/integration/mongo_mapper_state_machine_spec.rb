@@ -32,7 +32,7 @@ describe "Testing behavior of a MongoMapper::Document with a state_machine" do
   end
 
   before :each do
-    DocWithStateMachine.remove
+    clean_db
   end
 
   it "calls compute when transitioning from holding to current" do

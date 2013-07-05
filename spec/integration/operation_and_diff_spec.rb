@@ -46,7 +46,6 @@ describe "Diffs on operation parents" do
 
   context "Nest1" do
     before :each do
-      Nest1.remove
       @op = Nest1::Op.new :queen => @queen
       @nest = Nest1.new :op => @op
       @nest.save!

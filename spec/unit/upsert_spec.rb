@@ -14,7 +14,7 @@ describe "Sci Hacks" do
   end
 
   before :each do
-    SciHackTest.remove
+    clean_db
   end
 
   describe "upsert" do

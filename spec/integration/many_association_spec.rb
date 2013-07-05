@@ -47,10 +47,7 @@ describe "MongoPercolator many association (integration)" do
   end
 
   before :each do
-    MongoPercolator::Many::Copy.remove
-    TestManyAssociation2.remove
-    TestManyAssociation1.remove
-    Dugong.remove
+    clean_db
   end
 
   it "calls update_many_copy_for on save" do

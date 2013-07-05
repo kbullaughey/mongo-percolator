@@ -27,10 +27,7 @@ describe "Polymorphic operation parent integration" do
   end
 
   before :each do
-    PolymorphicParentA.remove
-    PolymorphicParentB.remove
-    NodeWithPolymorphicParent.remove
-    MongoPercolator::Operation.remove
+    clean_db
     @parA = PolymorphicParentA.create! :common => "I'm an A"
     @parB = PolymorphicParentB.create! :common => "Whachu looking at!"
   end

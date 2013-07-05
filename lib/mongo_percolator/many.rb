@@ -31,7 +31,7 @@ module MongoPercolator
     def self.delete_id(id)
       raise TypeError, "Expecting ObjectId" unless id.kind_of? BSON::ObjectId
       # Loop over the Many::Copy instances that contain id
-      Copy.where(:ids => id).find_each do |copy|
+      Copy.where(:ids => id).all.each do |copy|
         copy.delete_id id
       end
     end

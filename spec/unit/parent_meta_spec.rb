@@ -9,7 +9,7 @@ describe MongoPercolator::ParentMeta do
   end
 
   before :each do
-    ParentMetaContainer1.remove
+    clean_db
   end
 
   it "starts off empth" do

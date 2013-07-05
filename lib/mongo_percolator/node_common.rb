@@ -32,7 +32,7 @@ module MongoPercolator
     # After the root document is destroyed, there's no need to keep Many::Copy
     # documents that are relative to that root.
     def remove_many_copies
-      Many::Copy.remove :root_id => id
+      Many::Copy.collection.remove :root_id => id
     end
 
     # Return a dot-separated string showing the way from this document to the 

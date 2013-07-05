@@ -24,9 +24,7 @@ describe "Node exports integration" do
   end
 
   before :each do
-    NodeExportsIntegration1.remove
-    NodeExportsIntegration1Decendant.remove
-    MongoPercolator::Operation.remove
+    clean_db
     @parent = NodeExportsIntegration1.create! :hidden => "secret", 
       :visible => "public"
     @op = NodeExportsIntegration1Decendant::Op.new :par => @parent

@@ -21,7 +21,7 @@ describe "MongoPercolator::Addressable integration" do
   end
 
   before :each do
-    Life.remove
+    clean_db
   end
 
   describe "changed?" do

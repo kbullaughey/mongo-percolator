@@ -29,9 +29,7 @@ describe "upserts on nodes" do
   end
 
   before :each do
-    TargetBeingFollowed.remove
-    SpecialAgent1.remove
-    MongoPercolator::Operation.remove
+    clean_db
     @target = TargetBeingFollowed.create! :name => "Mr. Bond",
       :secret => "I have six toes on my left foot",
       :hair_color => "black"
@@ -67,7 +65,7 @@ describe "upserts on nodes" do
   end
 
   it "runs the create and save callbacks when upserting a non-existant document" do
-    TargetBeingFollowed.remove
+    TargetBeingFollowed.collection.remove
     TargetBeingFollowed.where(:name => "Jamesypie").upsert(:$set => {:hair_color => "(bald)"})
     @target = TargetBeingFollowed.first
     @target.name.should == "Jamesypie"
@@ -84,7 +82,7 @@ describe "upserts on nodes" do
   end
 
   it "forces propagation when the document was created between operations" do
-    TargetBeingFollowed.remove
+    TargetBeingFollowed.collection.remove
     # When I call find and modify, I actually create the document, but return nil.
     # This has the effect of the document not existing initially, but being
     # concurrently created by some other process.

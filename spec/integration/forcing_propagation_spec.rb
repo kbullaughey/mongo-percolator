@@ -68,13 +68,11 @@ describe "Forcing propagation" do
   end
 
   before :each do
-    MongoPercolator::Operation.remove
+    clean_db
   end
 
   context "no exports" do
     before :each do
-      ParentToForcePropagation.remove
-      NodeToForcePropagation.remove
       @mommy = ParentToForcePropagation.create! :mood => "jovial"
       op = NodeToForcePropagation::Increment.new :mommy => @mommy
       @child = NodeToForcePropagation.create! :increment => op
@@ -87,8 +85,6 @@ describe "Forcing propagation" do
 
   context "has exports" do
     before :each do
-      ParentToForcePropagationExports.remove
-      NodeToForcePropagationExports.remove
       @mommy = ParentToForcePropagationExports.create! :mood => "jovial"
       op = NodeToForcePropagationExports::Increment.new :mommy => @mommy
       @child = NodeToForcePropagationExports.create! :increment => op

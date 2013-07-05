@@ -19,8 +19,7 @@ describe "Using an Operation for an asynchronous effect" do
   end
 
   before :each do
-    MongoPercolator::Operation.remove
-    HasEffect.remove
+    clean_db
   end
 
   it "can be activated asynchronously" do
