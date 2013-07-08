@@ -223,7 +223,7 @@ module MongoPercolator
       # Handle the case in which this node is getting destroyed
       return unless destroyed?
 
-      MongoPercolator::Operation.where('parents.ids' => id).find_each do |op|
+      MongoPercolator::Operation.find_each('parents.ids' => id) do |op|
         op.remove_parent id
         op.expire!
         op.save!
