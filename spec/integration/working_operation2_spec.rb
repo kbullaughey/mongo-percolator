@@ -65,6 +65,14 @@ describe "MongoPercolator Node & Operation integration (2)" do
       @node.sum.round(1).should == 0.3
     end
 
+    it "can find its node when saved" do
+      @node.save.should be_true
+      @node.compute.save.should be_true
+      op = Summation::ComputeSum.find(@node.compute.id)
+      op.node.should_not be_nil
+      binding.pry
+    end
+
     context "Two initial terms" do
       before :each do
         @node.compute.sum_terms = [SumTerm.new(:value => 0.5), SumTerm.new(:value => 0.5)]
