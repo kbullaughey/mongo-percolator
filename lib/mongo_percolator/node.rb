@@ -138,7 +138,7 @@ module MongoPercolator
     #-----------------
 
     def versioned?
-      respond_to?(:version) && !version.nil?
+      self.class.versioned?
     end
 
     # Since operations are created in the 'nieve' state, they must be released after the

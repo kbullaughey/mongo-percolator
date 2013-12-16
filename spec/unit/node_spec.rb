@@ -36,6 +36,12 @@ describe "MongoPercolator::Node unit" do
     NodeUnitTestExports1.new.version.should be_a(BSON::ObjectId)
   end
 
+  it "is not versioned even when it has a version property" do
+    node = NodeUnitTestNoExports1.new
+    node['version'] = 'blah'
+    node.should_not be_versioned
+  end
+
   it "changes versions on save" do
     obj = NodeUnitTestExports1.new
     old_version = obj.version

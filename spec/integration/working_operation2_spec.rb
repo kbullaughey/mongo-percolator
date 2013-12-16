@@ -70,7 +70,6 @@ describe "MongoPercolator Node & Operation integration (2)" do
       @node.compute.save.should be_true
       op = Summation::ComputeSum.find(@node.compute.id)
       op.node.should_not be_nil
-      binding.pry
     end
 
     context "Two initial terms" do
