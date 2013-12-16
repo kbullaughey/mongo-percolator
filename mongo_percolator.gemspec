@@ -16,7 +16,6 @@ Gem::Specification.new do |gem|
 
   # Dependencies
   gem.add_dependency 'mongo'
-  gem.add_dependency 'i18n'
   gem.add_dependency 'bson_ext'
   gem.add_dependency 'mongo_mapper'
   gem.add_dependency 'activesupport'
