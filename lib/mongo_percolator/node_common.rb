@@ -33,6 +33,7 @@ module MongoPercolator
     # documents that are relative to that root.
     def remove_many_copies
       Many::Copy.collection.remove :root_id => id
+      true
     end
 
     # Return a dot-separated string showing the way from this document to the 
