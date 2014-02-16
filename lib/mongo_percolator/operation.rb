@@ -66,7 +66,8 @@ module MongoPercolator
       # persisted, we can use this transition. Otherwise we need to call 
       # acquire (the class method).
       event(:acquire) do 
-        transition [:naive, :held] => :error, :if => lambda {|op| !op.persisted?}
+        transition [:naive, :held] => :error, :if => lambda {|op| op.persisted?}
+        transition :naive => :held, :if => lambda {|op| !op.persisted?}
       end
     end
 
