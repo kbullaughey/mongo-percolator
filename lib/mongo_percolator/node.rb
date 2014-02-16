@@ -141,7 +141,7 @@ module MongoPercolator
       self.class.versioned?
     end
 
-    # Since operations are created in the 'nieve' state, they must be released after the
+    # Since operations are created in the 'naive' state, they must be released after the
     # node is created. This prevents the operations from getting performed before their
     # nodes are in existence.
     def release_operations

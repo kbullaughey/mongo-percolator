@@ -147,7 +147,7 @@ describe "MongoPercolator::Operation unit" do
     op.save.should be_true
     op.stale?.should be_true
     op.error?.should be_false
-    # manually mature the op, as ops without nodes start off 'nieve'
+    # manually mature the op, as ops without nodes start off 'naive'
     op.mature!
     op = OpCantBeSaved.acquire :_id => op.id
     op.should_not be_nil
@@ -301,7 +301,7 @@ describe "MongoPercolator::Operation unit" do
       slow = RealOpUnit.create :priority => 2
       fast = RealOpUnit.create :priority => 0
       medium = RealOpUnit.create :priority => 1
-      # manually mature the op, as ops without nodes start off 'nieve'
+      # manually mature the op, as ops without nodes start off 'naive'
       [slow,fast,medium].each {|op| op.mature!}
       op1 = MongoPercolator::Operation.acquire
       op2 = MongoPercolator::Operation.acquire

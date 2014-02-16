@@ -97,7 +97,7 @@ describe "MongoPercolator Node & Operation integration" do
       node.should_not be_persisted
       op = node.real_op
       op.should be_persisted
-      op.should be_nieve
+      op.should be_naive
       node.save.should be_true
       op.reload
       op.should be_available

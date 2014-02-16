@@ -28,7 +28,7 @@ module MongoPercolator
     # because it's just been recomputed.
     before_save { expire! if persisted? and composition_changed? }
 
-    # Operations start off nieve until their node is initially saved; but if
+    # Operations start off naive until their node is initially saved; but if
     # they're created on an already-persisted node, then we can just
     # mature them immediately.
     after_create { mature! unless !respond_to?(:node) or node.nil? }
@@ -52,13 +52,13 @@ module MongoPercolator
     # (i.e., within the time the state is read and posted to the database). 
     key :state, String
     attr_protected :state
-    state_machine :state, :initial => :nieve, :action => :post_state do
-      state :nieve
+    state_machine :state, :initial => :naive, :action => :post_state do
+      state :naive
       state :available
       state :held
       state :error
 
-      event(:mature) { transition :nieve => :available }
+      event(:mature) { transition :naive => :available }
       event(:release) { transition :held => :available }
       event(:choke) { transition :held => :error }
       event(:revive) { transition :error => :available }
@@ -66,7 +66,7 @@ module MongoPercolator
       # persisted, we can use this transition. Otherwise we need to call 
       # acquire (the class method).
       event(:acquire) do 
-        transition [:nieve, :held] => :error, :if => lambda {|op| !op.persisted?}
+        transition [:naive, :held] => :error, :if => lambda {|op| !op.persisted?}
       end
     end
 
@@ -310,8 +310,8 @@ module MongoPercolator
       # @param id [BSON::ObjectId] id of operation to perform.
       def perform_on!(node, id)
         criteria = {_id: id}
-        # If a node has not been persisted, then its operation will still be nieve
-        criteria.merge! state: 'nieve' unless node.persisted?
+        # If a node has not been persisted, then its operation will still be naive
+        criteria.merge! state: 'naive' unless node.persisted?
         op = acquire(criteria) or raise FetchFailed.new("Fetch failed").
           add(_id: id, node: node, criteria: criteria)
         # I use instance eval because compute is private, so that you're not
