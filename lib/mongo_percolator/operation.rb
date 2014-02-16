@@ -476,6 +476,7 @@ module MongoPercolator
     # Write our state and increment our timeid, but only if we've been persisted.
     def post_state
       set :state => state, :timeid => tick if persisted?
+      true
     end
 
     # This marks an operation as not stale, but is only possible if the op hasn't
