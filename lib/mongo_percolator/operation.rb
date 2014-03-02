@@ -455,8 +455,7 @@ module MongoPercolator
           # Exclude our state variables from the properites we persist so that saving
           # will not overwrite our state variables.
           doc = doc.reject{|k,v| %(stale state timeid).include? k}
-          update({:_id => id}, {:$set => doc}, :upsert => true, 
-            :safe => opts.fetch(:safe, @safe))
+          update({:_id => id}, {:$set => doc}, :upsert => true)
           id
         end
 
