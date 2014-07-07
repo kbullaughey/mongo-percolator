@@ -13,6 +13,7 @@ describe "MongoPercolator Node & Operation integration" do
     # Set up an operation class
     class RealOp < MongoPercolator::Operation
       emit do
+        raise "Purposeful failure" unless self['should_fail'].nil?
         self.pets = ((input('animals.farm')||[]) + (input('animals.wild')||[])).sort
       end
       declare_parent :animals, :class => AnimalsIntegration
@@ -62,6 +63,15 @@ describe "MongoPercolator Node & Operation integration" do
       @op.animals = @animals
       @animals.persisted?.should be_true
       AnimalsIntegration.where(:id => @animals.id).count.should == 1
+    end
+
+    it "doesn't leave any traces if it fails in emit" do
+      @animals['should_fail'] = 'yes'
+      expect {
+        @op.perform_on!(@animals)
+      }.to raise_error(RuntimeError, /Purposeful failure/)
+      expect(MongoPercolator::Operation.count).to eq(0)
+      expect(AnimalsIntegration.count).to eq(0)
     end
 
     it "can access the parent using the reader" do

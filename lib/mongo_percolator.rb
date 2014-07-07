@@ -6,6 +6,8 @@ require 'state_machine'
 require 'mongo_percolator/version'
 require 'mongo_percolator/guide'
 
+I18n.config.enforce_available_locales = true
+
 module MongoPercolator
   def self.whoami?
     'I am the (Mongo) Percolator!'

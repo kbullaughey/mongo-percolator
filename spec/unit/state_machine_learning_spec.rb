@@ -78,7 +78,7 @@ describe "Learning how to use state_machine gem" do
     @pumpkin.stolen = true
     expect {
       @pumpkin.carve!
-    }.to_not raise_error(StateMachine::InvalidTransition)
+    }.to_not raise_error
   end
 
   it "looks purchased when it was indeed purchased" do
