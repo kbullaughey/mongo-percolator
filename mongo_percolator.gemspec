@@ -15,7 +15,7 @@ Gem::Specification.new do |gem|
   gem.version       = MongoPercolator::VERSION
 
   # Dependencies
-  gem.add_dependency 'mongo'
+  gem.add_dependency 'mongo', '~> 1.12.0'
   gem.add_dependency 'bson_ext'
   gem.add_dependency 'mongo_mapper'
   gem.add_dependency 'activesupport'

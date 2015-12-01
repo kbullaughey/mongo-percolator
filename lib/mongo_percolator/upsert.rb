@@ -55,15 +55,8 @@ module MongoMapper
                 action_summary = update(mod, :upsert => true)
                 raise MongoPercolator::DatabaseError.new("Update error").add(:mod => mod) unless
                   action_summary["err"].nil?
-                if action_summary["updatedExisting"] == false
-                  node = node_class.find(action_summary["upserted"])
-                  # Run the callbacks. Note that the document will be checked for
-                  # whether it needs to propagate changes, but this will generally
-                  # not result in any propagation (unless the document has been 
-                  # subsequently modified) because the document will not show any
-                  # changes. This will cause both the create and save callbacks to run
-                  node.run_callbacks(:create) { node.save! }
-                else
+                upsert_info = action_summary['upserted']
+                if upsert_info.nil?
                   # The document that didn't exist just a moment ago (when we
                   # did find_and_modify) was created in the meantime and so
                   # was updated (not upserted). This should be a rare condition
@@ -81,6 +74,15 @@ module MongoMapper
                     add(:mod => mod) if node.nil?
                   # Force propagation
                   node.propagate :force => true
+                else
+                  id = upsert_info.first['_id']
+                  node = node_class.find id
+                  # Run the callbacks. Note that the document will be checked for
+                  # whether it needs to propagate changes, but this will generally
+                  # not result in any propagation (unless the document has been 
+                  # subsequently modified) because the document will not show any
+                  # changes. This will cause both the create and save callbacks to run
+                  node.run_callbacks(:create) { node.save! }
                 end
               else
                 node = node_class.find original.id
