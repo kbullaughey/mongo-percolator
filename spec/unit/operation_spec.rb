@@ -25,6 +25,7 @@ describe "MongoPercolator::Operation unit" do
       depends_on 'animals.farm'
       depends_on 'animals.wild'
       depends_on 'locations_unit_tests[].country'
+      key :op_data, String
     end
 
     # Set up another derived class that isn't inserted into a node and thus
@@ -158,7 +159,37 @@ describe "MongoPercolator::Operation unit" do
     op.error?.should be_true
   end
 
-  pending "Check that state variables are not overwritten by save"
+  it "can save a property to nil" do
+    @a = AnimalsUnitTest.new(:wild => 'fugu')
+    @op = RealOpUnit.new :animals => @a, op_data: 'yummy'
+    @op.save!
+    expect(@op.op_data).to eq('yummy')
+    @op.op_data = nil
+    @op.save!
+    @op.reload
+    expect(@op.op_data).to be_nil
+    @op.op_data = 'yuck'
+    @op.save!
+    @op.reload
+    expect(@op.op_data).to eq('yuck')
+  end
+
+  it "doesn't overwrite state variables in save" do
+    @a = AnimalsUnitTest.new(:wild => 'fugu')
+    @op = RealOpUnit.new :animals => @a
+    @op.save!
+    @a.save!
+    @op.reload
+    expect(@op).to be_persisted
+    expect(@op.state).to eq("naive")
+    expect(@op.stale).to eq(true)
+    @op.op_data = 'yummy'
+    @op.save!
+    @op.reload
+    expect(@op.op_data).to eq('yummy')
+    expect(@op.state).to eq("naive")
+    expect(@op.stale).to be(true)
+  end
 
   it "raises an error when percolating an operation without a node" do
     op = OpCantBeSaved.new :req => "has required field"

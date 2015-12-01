@@ -447,6 +447,7 @@ module MongoPercolator
       def collection
         # If the document has been persisted already, change the behavior of save()
         # so that it calls update using the $set operator.
+        model_keys = defined_keys.keys - %w(stale state timeid _id _type)
         col = super
         col.define_singleton_method :save do |doc, opts|
           id = doc.delete :_id
@@ -455,7 +456,12 @@ module MongoPercolator
           # Exclude our state variables from the properites we persist so that saving
           # will not overwrite our state variables.
           doc = doc.reject{|k,v| %(stale state timeid).include? k}
-          update({:_id => id}, {:$set => doc}, :upsert => true)
+          to_unset = Hash[model_keys.select{|key| doc[key].nil?}.collect{|key| [key,1]}]
+          update_doc = {:$set => doc}
+          unless to_unset.empty?
+            update_doc[:$unset] = to_unset
+          end
+          update({:_id => id}, update_doc, :upsert => true)
           id
         end
 
