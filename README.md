@@ -85,13 +85,46 @@ The process(es) doing percolation then simply need to identify expired
 operations, and perform them as necessary, keeping the whole data graph up to
 date.
 
-### Operations
-
 ### Percolation
 
-### Diffs
+Percolation is the process of recomputing expired operations.
 
-### Exports
+This involves creating a guide instance and percolating:
+
+    g = MongoPercolator.guide
+    g.percolate
+
+The `percolate` method will keep updating expired operations until there are none remaining.
+
+Each operation has a state property that can be one of the following:
+
+0. naive
+0. available
+0. held
+0. error
+
+Separately, each operation has a boolean flag, `state` indicating whether the operation needs re-computation.
+
+A new operation is initially in the naive state, meaning the document may be incomplete and should not be considered for percolation. When the document is ready, it's moved into the available state. During percolation, the guide retrieves operations that are both `available` and `stale`. The document is atomically marked as `held` while computation is ongoing, after which point the document is atomically marked as both not stale and available.
+
+The `Guide#percolate` method only returns when computation has been interrupted or there is nothing that needs updating. It is thus trivial to turn this into a poll loop that handles percolation on an ongoing basis:
+
+
+    until guide.interrupted?
+      begin
+        guide.percolate
+        if guide.operations > 0
+          # The guide provides various metrics 
+          ops, time = guide.operations, guide.percolation_time
+        else
+          sleep 5
+        end
+      rescue SystemExit => e
+        guide.interrupt!
+      rescue StandardError => e
+        # log errors here
+      end
+    end
 
 ## Installation
 
