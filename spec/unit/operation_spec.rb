@@ -89,21 +89,21 @@ describe "MongoPercolator::Operation unit" do
       stub_const("Blahs", blah_class)
       c = RealOpUnfrozen.guess_class :blahs, 
         :no_singularize => true
-      c.should == blah_class
+       expect(c).to eq(blah_class)
     end
   
     it "signularizes if not requested not to" do
       blah_class = Class
       stub_const("Blah", blah_class)
       c = RealOpUnfrozen.guess_class :blahs, {}
-      c.should == blah_class
+       expect(c).to eq(blah_class)
     end
   
     it "adds the reader to the parent_labels set" do
       goop_class = Class
       stub_const("Goop", goop_class)
       c = RealOpUnfrozen.declare_parent :goop
-      RealOpUnfrozen.parent_labels.should include(:goop)
+      expect(RealOpUnfrozen.parent_labels).to include(:goop)
     end
   end
 
@@ -117,10 +117,10 @@ describe "MongoPercolator::Operation unit" do
 
   it "can use the abbreviated operation syntax" do
     node = NodeWithAbbreviatedSyntax.create!(:op => NodeWithAbbreviatedSyntax::Op.new)   
-    node.was_run.should be_false
+    expect(node.was_run).to be false
     node.op.perform!
     node.reload
-    node.was_run.should be_true
+    expect(node.was_run).to be true
   end
 
   it "raises an error if a dependency doesn't reach into a parent" do
@@ -136,27 +136,27 @@ describe "MongoPercolator::Operation unit" do
   it "can be created using the create_* convenience function" do
     node = NodeWithAbbreviatedSyntax.create
     node.create_op
-    node.op.should_not be_nil
-    node.was_run.should be_false
+    expect(node.op).to_not be_nil
+    expect(node.was_run).to be false
     node.op.perform!
     node.reload
-    node.was_run.should be_true
+    expect(node.was_run).to be true
   end
 
   it "can be put in the error state even when save doesn't work" do
     op = OpCantBeSaved.new :req => "has required field"
-    op.save.should be_true
-    op.stale?.should be_true
-    op.error?.should be_false
+    expect(op.save).to be true
+    expect(op.stale?).to be true
+    expect(op.error?).to be false
     # manually mature the op, as ops without nodes start off 'naive'
     op.mature!
     op = OpCantBeSaved.acquire :_id => op.id
-    op.should_not be_nil
+    expect(op).to_not be_nil
     op.req = nil
-    op.save.should be_false
+    expect(op.save).to be false
     op.choke!
     op.reload
-    op.error?.should be_true
+    expect(op.error?).to be true
   end
 
   it "can save a property to nil" do
@@ -193,7 +193,7 @@ describe "MongoPercolator::Operation unit" do
 
   it "raises an error when percolating an operation without a node" do
     op = OpCantBeSaved.new :req => "has required field"
-    op.save.should be_true
+    expect(op.save).to be true
     expect {
       op.perform!
     }.to raise_error(MongoPercolator::MissingData, /node/)
@@ -205,9 +205,9 @@ describe "MongoPercolator::Operation unit" do
     before :each do
       @a = AnimalsUnitTest.new(:wild => 'fugu')
       @op = RealOpUnit.new :animals => @a
-      @op.save.should be_true
+      expect(@op.save).to be true
       @raw_doc = RealOpUnit.collection.find_one
-      @raw_doc['parents']['ids'].first.should == @op.animals.id
+       expect(@raw_doc['parents']['ids'].first).to eq(@op.animals.id)
       @raw_doc['parents']['ids'].push BSON::ObjectId.new
       @raw_doc['parents']['meta']['old_parent'] = 1
       RealOpUnit.collection.save(@raw_doc, {})
@@ -215,7 +215,7 @@ describe "MongoPercolator::Operation unit" do
 
     it "gracefully handles obsolete parents" do
       op2 = RealOpUnit.first
-      op2.animals.id.should == @a.id
+       expect(op2.animals.id).to eq(@a.id)
       expect { op2.old_parent }.to raise_error(NoMethodError)
     end
 
@@ -223,20 +223,20 @@ describe "MongoPercolator::Operation unit" do
       op2 = RealOpUnit.first
       op2.parents.remove 'old_parent'
       reinstantiated = MongoPercolator::ParentMeta.from_mongo op2.parents.to_mongo
-      reinstantiated.parents.keys.should == ["animals"]
+       expect(reinstantiated.parents.keys).to eq(["animals"])
     end
   end
 
   it "gracefully handles an obsolete parent when it has no parents" do
     @op = RealOpUnit.new
-    @op.save.should be_true
+    expect(@op.save).to be true
     @raw_doc = RealOpUnit.collection.find_one
     @raw_doc['parents'] = {}
     @raw_doc['parents']['ids'] = [BSON::ObjectId.new]
     @raw_doc['parents']['meta'] = {'old_parent' => 1}
     RealOpUnit.collection.save(@raw_doc, {})
     op2 = RealOpUnit.first
-    op2.animals.should be_nil
+    expect(op2.animals).to be_nil
   end
 
   describe "RealOpUnit" do
@@ -248,60 +248,60 @@ describe "MongoPercolator::Operation unit" do
       op = RealOpUnit.new
       op.animals_id = "a"
       op.fresh!
-      op.composition_changed?.should be_true
-      op.stale?.should be_false
+      expect(op.composition_changed?).to be true
+      expect(op.stale?).to be false
     end
 
     it "can doesn't need to look stale upon creation" do
       op = RealOpUnit.new :stale => false
       op.animals_id = "a"
-      op.composition_changed?.should be_true
-      op.stale?.should be_false
+      expect(op.composition_changed?).to be true
+      expect(op.stale?).to be false
     end
 
     it "responds to the parent readers" do
       op = RealOpUnit.new
-      op.should respond_to(:animals)
-      op.should respond_to(:animals_id)
-      op.should respond_to(:locations_unit_tests)
-      op.should respond_to(:locations_unit_test_ids)
+      expect(op).to respond_to(:animals)
+      expect(op).to respond_to(:animals_id)
+      expect(op).to respond_to(:locations_unit_tests)
+      expect(op).to respond_to(:locations_unit_test_ids)
     end
 
     it "responds to the parent writers" do
       op = RealOpUnit.new
-      op.should respond_to(:animals=)
-      op.should respond_to(:animals_id=)
-      op.should respond_to(:locations_unit_tests=)
-      op.should respond_to(:locations_unit_test_ids=)
+      expect(op).to respond_to(:animals=)
+      expect(op).to respond_to(:animals_id=)
+      expect(op).to respond_to(:locations_unit_tests=)
+      expect(op).to respond_to(:locations_unit_test_ids=)
     end
 
     it "cannot assign directly to parents" do
       op = RealOpUnit.new :parents => MongoPercolator::ParentMeta.new
-      op.parents.should be_nil
+      expect(op.parents).to be_nil
     end
 
     it "knows about the parent labels" do
-      RealOpUnit.parent_labels.should include(:animals)
-      RealOpUnit.parent_labels.should include(:locations_unit_tests)
+      expect(RealOpUnit.parent_labels).to include(:animals)
+      expect(RealOpUnit.parent_labels).to include(:locations_unit_tests)
     end
 
     it "can get an empty list of parents" do
       op = RealOpUnit.new
-      op.locations_unit_tests.should == []
+       expect(op.locations_unit_tests).to eq([])
     end
 
     it "can add parent ids to a plural label" do
       op = RealOpUnit.new
       op.locations_unit_test_ids = %w(a b c)
-      op.locations_unit_test_ids.should == %w(a b c)
-      op.parent_ids.should == %w(a b c)
+       expect(op.locations_unit_test_ids).to eq(%w(a b c))
+       expect(op.parent_ids).to eq(%w(a b c))
     end
 
     it "can add a parent id to a singular label" do
       op = RealOpUnit.new
       op.animals_id = "a"
-      op.animals_id.should == "a"
-      op.parent_ids.should == ["a"]
+       expect(op.animals_id).to eq("a")
+       expect(op.parent_ids).to eq(["a"])
     end
 
     it "cannot be recomputed when not attached to a node" do
@@ -314,15 +314,15 @@ describe "MongoPercolator::Operation unit" do
 
     it "can be marked current when not yet persisted" do
       op = RealOpUnit.new
-      op.stale?.should be_true
+      expect(op.stale?).to be true
       op.fresh!
-      op.stale?.should be_false
+      expect(op.stale?).to be false
     end
 
     it "cannot be marked current if it's already been persisted" do
       op = RealOpUnit.new
-      op.save.should be_true
-      op.stale?.should be_true
+      expect(op.save).to be true
+      expect(op.stale?).to be true
       expect {
         op.fresh!
       }.to raise_error(MongoPercolator::StateError, /persisted/)
@@ -337,17 +337,17 @@ describe "MongoPercolator::Operation unit" do
       op1 = MongoPercolator::Operation.acquire
       op2 = MongoPercolator::Operation.acquire
       op3 = MongoPercolator::Operation.acquire
-      op1.id.should == fast.id
-      op2.id.should == medium.id
-      op3.id.should == slow.id
+       expect(op1.id).to eq(fast.id)
+       expect(op2.id).to eq(medium.id)
+       expect(op3.id).to eq(slow.id)
     end
 
     it "has a priority set by default" do
       op = RealOpUnit.create
       persisted = RealOpUnit.first
-      op.id.should == persisted.id
-      op.priority.should == 1
-      persisted.priority.should == 1
+       expect(op.id).to eq(persisted.id)
+      expect(op.priority).to eq(1)
+      expect(persisted.priority).to eq(1)
     end
 
     context "has parents" do
@@ -360,42 +360,42 @@ describe "MongoPercolator::Operation unit" do
       end
 
       it "can't modify the array returned by the plural reader" do
-        @op.save.should be_true
+        expect(@op.save).to be true
         array = @op.locations_unit_tests
-        array.frozen?.should be_true
+        expect(array.frozen?).to be true
         expect {
           array << LocationsUnitTest.new()
         }.to raise_error(RuntimeError)
       end
 
       it "can tell when a parent has been added" do
-        @op.save.should be_true
-        @op.diff.changed?(@op.dependencies).should be_false
+        expect(@op.save).to be true
+        expect(@op.diff.changed?(@op.dependencies)).to be false
         new_loc = LocationsUnitTest.create(:country => 'taiwan')
         @op.locations_unit_test_ids << new_loc.id
-        @op.diff.changed?(@op.dependencies).should be_true
-        @op.stale?.should be_true
+        expect(@op.diff.changed?(@op.dependencies)).to be true
+        expect(@op.stale?).to be true
       end
 
       it "should know the parent is a parent" do
-        @op.parent?(@p1).should be_true
-        @op.parent?(@p2s[0]).should be_true
-        @op.parent?(@p2s[1]).should be_true
+        expect(@op.parent?(@p1)).to be true
+        expect(@op.parent?(@p2s[0])).to be true
+        expect(@op.parent?(@p2s[1])).to be true
       end
 
       it "should know the labels for parents" do
-        @op.parent_label(@p1).should == :animals
-        @op.parent_label(@p2s[0]).should == :locations_unit_tests
-        @op.parent_label(@p2s[1]).should == :locations_unit_tests
+         expect(@op.parent_label(@p1)).to eq(:animals)
+         expect(@op.parent_label(@p2s[0])).to eq(:locations_unit_tests)
+         expect(@op.parent_label(@p2s[1])).to eq(:locations_unit_tests)
       end
 
       it "can gather the data for the operation" do
         data = @op.gather
-        data.should be_kind_of(Hash)
-        data['animals.farm'].first.should == ["pig"]
-        data['animals.wild'].first.should == ["sloth", "binturong"]
-        data['locations_unit_tests[].country'].should be_kind_of(Array)
-        data['locations_unit_tests[].country'].should == %w(france russia)
+        expect(data).to be_kind_of(Hash)
+         expect(data['animals.farm'].first).to eq(["pig"])
+         expect(data['animals.wild'].first).to eq(["sloth", "binturong"])
+        expect(data['locations_unit_tests[].country']).to be_kind_of(Array)
+         expect(data['locations_unit_tests[].country']).to eq(%w(france russia))
       end
 
     end

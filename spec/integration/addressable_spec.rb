@@ -31,12 +31,12 @@ describe "MongoPercolator::Addressable integration" do
 
     context "unpersisted" do
       it "knows an unpersisted object has changed" do
-        @life.diff.changed?('name').should be_true
+        expect(@life.diff.changed?('name')).to be true
       end
 
       it "can be compared against a given object" do
-        @life.diff(:against => {:name => "Simon"}).changed?('name').should be_false
-        @life.diff(:against => {:name => "Says"}).changed?('name').should be_true
+        expect(@life.diff(:against => {:name => "Simon"}).changed?('name')).to be false
+        expect(@life.diff(:against => {:name => "Says"}).changed?('name')).to be true
       end
     end
 
@@ -48,29 +48,29 @@ describe "MongoPercolator::Addressable integration" do
   
       it "doesn't cache a diff by default" do
         MP::Addressable::Diff.stub(:new).and_return(@fake_diff)
-        MP::Addressable::Diff.should_receive(:new).exactly(2).times
+        expect(MP::Addressable::Diff).to receive(:new).exactly(2).times
         @life.diff.changed?('name')
         @life.diff.changed?('span')
       end
   
       it "caches a diff if requested not to" do
         MP::Addressable::Diff.stub(:new).and_return(@fake_diff)
-        MP::Addressable::Diff.should_receive(:new).exactly(1).times
+        expect(MP::Addressable::Diff).to receive(:new).exactly(1).times
         @life.diff.changed?('name')
         @life.diff(:use_cached => true).changed?('span')
       end
   
       it "knows a modified first-level propery has changed" do
-        @life.diff.changed?('name').should be_false
+        expect(@life.diff.changed?('name')).to be false
         @life.name = "Qin Shi Huang"
-        @life.diff.changed?('name').should be_true
+        expect(@life.diff.changed?('name')).to be true
       end
   
       it "knows a replaced association has changed" do
         @life.name = 'Qin Shi Huang'
         @life.save!
         @life.purpose = Purpose.new :summary => "Become Emperor"
-        @life.diff.changed?('purpose.summary').should be_true
+        expect(@life.diff.changed?('purpose.summary')).to be true
       end
     end
   end

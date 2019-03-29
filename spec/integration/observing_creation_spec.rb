@@ -3,25 +3,25 @@ require 'spec_helper'
 shared_examples "observing creation of a class" do
   it "observes the creation of an instance of ClassObservedForCreation" do
     ClassObservedForCreation.create! :name => "Big Bird"
-    EffectOfObserver.count.should == 0
+    expect(EffectOfObserver.count).to eq(0)
     MongoPercolator.percolate
     effect = EffectOfObserver.first
-    effect.should_not be_nil
-    effect.result.should == "who: Big Bird"
+    expect(effect).to_not be_nil
+     expect(effect.result).to eq("who: Big Bird")
   end
 
   it "destroys the observer after it's fired" do
     ClassObservedForCreation.create! :name => "Beaker"
-    @observer_class.first.should_not be_nil
+    expect(@observer_class.first).to_not be_nil
     MongoPercolator.percolate
-    @observer_class.first.should be_nil
+    expect(@observer_class.first).to be_nil
   end
 
   it "destroys the observer when the node is deleted" do
     observed = ClassObservedForCreation.create! :name => "Oscar"
-    @observer_class.first.should_not be_nil
+    expect(@observer_class.first).to_not be_nil
     observed.destroy
-    @observer_class.first.should be_nil
+    expect(@observer_class.first).to be_nil
   end
 end
 

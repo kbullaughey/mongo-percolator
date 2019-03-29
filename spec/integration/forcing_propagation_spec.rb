@@ -2,29 +2,29 @@ require 'spec_helper'
 
 shared_examples "forcing propagation" do
   it "starts with child having a counter of 1" do
-    @child.counter.should == 1
+    expect(@child.counter).to eq(1)
   end
 
   it "propagates if the parent has changed" do
     @mommy.mood = "dark"
-    @mommy.save.should be_true
+    expect(@mommy.save).to be true
     MongoPercolator.percolate
     @child.reload
-    @child.counter.should == 2
+    expect(@child.counter).to eq(2)
   end
 
   it "doesn't propagate when the parent hasn't changed" do
-    @mommy.save.should be_true
+    expect(@mommy.save).to be true
     MongoPercolator.percolate
     @child.reload
-    @child.counter.should == 1
+    expect(@child.counter).to eq(1)
   end
 
   it "can be forced to propagate even if parent hasn't changed" do
     @mommy.propagate :force => true
     MongoPercolator.percolate
     @child.reload
-    @child.counter.should == 2
+    expect(@child.counter).to eq(2)
   end
 end
 
@@ -97,10 +97,10 @@ describe "Forcing propagation" do
     it "doesn't percolate when a non-exported property changes" do
       # make sure exports are working
       @mommy.real_mood = "dark"
-      @mommy.save.should be_true
+      expect(@mommy.save).to be true
       MongoPercolator.percolate
       @child.reload
-      @child.counter.should == 1
+      expect(@child.counter).to eq(1)
     end
   end
 end

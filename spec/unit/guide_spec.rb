@@ -6,27 +6,27 @@ describe MongoPercolator::Guide do
   end
 
   it "can be initialized and has defaults" do
-    @guide.operations.should == 0
-    @guide.interrupted?.should be_false
+    expect(@guide.operations).to eq(0)
+    expect(@guide.interrupted?).to be false
   end
 
   it "can have the counters incremented" do
     @guide.operations += 1
-    @guide.operations.should == 1
+    expect(@guide.operations).to eq(1)
   end
 
   it "can store information about an interrupt" do
     @guide.interrupt!
-    @guide.interrupted?.should be_true
+    expect(@guide.interrupted?).to be true
   end
 
   it "starts off with a nil percolation time" do
-    @guide.percolation_time.should be_nil
+    expect(@guide.percolation_time).to be_nil
   end
 
   it "knows how long it percolated for" do
     @guide.percolate
-    @guide.percolation_time.should > 0
+    expect(@guide.percolation_time).to be > 0
   end
 end
 

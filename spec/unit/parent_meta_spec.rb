@@ -13,11 +13,11 @@ describe MongoPercolator::ParentMeta do
   end
 
   it "starts off empth" do
-    subject.ids.should == []
+     expect(subject.ids).to eq([])
   end
 
   it "return an empty array if a parent doesn't exist" do
-    subject['no parent'].should == []
+     expect(subject['no parent']).to eq([])
   end
 
   it "raises an error if not passed a hash" do
@@ -27,13 +27,13 @@ describe MongoPercolator::ParentMeta do
 
   it "can set a new parent" do
     subject['new_parent'] = %w(t u v)
-    subject.ids.should == %w(t u v)
+     expect(subject.ids).to eq(%w(t u v))
   end
 
   it "can test if a parent label is defined" do
     subject['new_parent'] = %w(t u v)
-    subject.parents.include?('new_parent').should be_true
-    subject.parents.include?('uncle').should be_false
+    expect(subject.parents.include?('new_parent')).to be true
+    expect(subject.parents.include?('uncle')).to be false
   end
 
   it "raises an error if meta isn't a hash" do
@@ -61,41 +61,41 @@ describe MongoPercolator::ParentMeta do
     end
   
     it "can be initialized from a hash" do
-      @pm.ids.should == %w(a b c)
-      @pm['p1'].should == ['a']
-      @pm['p2'].should == ['b', 'c']
+       expect(@pm.ids).to eq(%w(a b c))
+       expect(@pm['p1']).to eq(['a'])
+       expect(@pm['p2']).to eq(['b', 'c'])
     end
 
     it "can have a parent's ids added to" do
       @pm['p1'] << 'x'
-      @pm['p1'].should == %w(a x)
-      @pm.ids.should == %w(a x b c)
+       expect(@pm['p1']).to eq(%w(a x))
+       expect(@pm.ids).to eq(%w(a x b c))
     end
 
     it "can set a parent's ids" do
       @pm['p2'] = %w(q r s)
-      @pm.ids.should == %w(a q r s)
+       expect(@pm.ids).to eq(%w(a q r s))
     end
 
     it "can be serialized to mongo" do
       mongo = @pm.to_mongo
-      mongo['ids'].should == %w(a b c)
-      mongo['meta'].should == {'p1' => 1, 'p2' => 2}
+       expect(mongo['ids']).to eq(%w(a b c))
+       expect(mongo['meta']).to eq({'p1' => 1, 'p2' => 2})
     end
 
     it "can return the first parent's name" do
-      @pm.parent_at(0).should == "p1"
-      @pm.parent_at(1).should == "p2"
-      @pm.parent_at(2).should == "p2"
+       expect(@pm.parent_at(0)).to eq("p1")
+       expect(@pm.parent_at(1)).to eq("p2")
+       expect(@pm.parent_at(2)).to eq("p2")
     end
 
     it "knows how many parents there are" do
-      @pm.length.should == 3
+      expect(@pm.length).to eq(3)
     end
 
     it "can be initialized with no parents of one type" do
       pm2 = MongoPercolator::ParentMeta.new :ids => [], :meta => {'p1' => 0}
-      pm2.ids.should == []
+       expect(pm2.ids).to eq([])
     end
 
     it "cannot have a parent id array set to nil" do
@@ -108,9 +108,9 @@ describe MongoPercolator::ParentMeta do
       @pm['newbie'] = []
       @pm.freeze
       @pm['newbie'] = %w(x y z)
-      @pm.ids.should include('x')
-      @pm.ids.should include('y')
-      @pm.ids.should include('z')
+      expect(@pm.ids).to include('x')
+      expect(@pm.ids).to include('y')
+      expect(@pm.ids).to include('z')
     end
 
     it "cannot add a new parent type when frozen" do
@@ -123,27 +123,27 @@ describe MongoPercolator::ParentMeta do
     it "can produce a diff" do
       old = @pm.to_mongo
       properties = %w(ids meta)
-      @pm.diff(:against => old).changed?(properties).should be_false
+      expect(@pm.diff(:against => old).changed?(properties)).to be false
       @pm['p1'] << "v"
-      @pm.diff(:against => old).changed?(properties).should be_true
+      expect(@pm.diff(:against => old).changed?(properties)).to be true
     end
 
     describe "MongoDB interaction" do
       it "can be persisted to mongo and read from mongo" do
         c = ParentMetaContainer1.new
         c.parents = @pm
-        c.save.should be_true
+        expect(c.save).to be true
         c_restored = ParentMetaContainer1.first
-        c_restored.parents.ids.should == %w(a b c)
-        c_restored.parents['p2'].should == %w(b c)
+         expect(c_restored.parents.ids).to eq(%w(a b c))
+         expect(c_restored.parents['p2']).to eq(%w(b c))
       end
 
       it "can be nil" do
         c = ParentMetaContainer1.new
         c.parents = nil
-        c.save.should be_true
+        expect(c.save).to be true
         c_restored = ParentMetaContainer1.first
-        c_restored.parents.should be_nil
+        expect(c_restored.parents).to be_nil
       end
     end
   end

@@ -16,8 +16,8 @@ describe "MongoMapper" do
   it "is not persisted when it has an association" do
     mm1 = Mm1.new
     mm2 = Mm2.new :mm1 => mm1
-    mm1.should be_persisted
-    mm2.should be_persisted
+    expect(mm1).to be_persisted
+    expect(mm2).to be_persisted
   end
 end
 

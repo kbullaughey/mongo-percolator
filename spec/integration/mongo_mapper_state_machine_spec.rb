@@ -38,27 +38,27 @@ describe "Testing behavior of a MongoMapper::Document with a state_machine" do
   it "calls compute when transitioning from holding to current" do
     @doc = DocWithStateMachine.new
     @doc.state = "holding"
-    @doc.times_save_called.should == 0
+    expect(@doc.times_save_called).to eq(0)
     @doc.recompute!
-    @doc.times_save_called.should == 1
-    @doc.computed_property.should == "1 at holding"
-    @doc.current?.should be_true
+    expect(@doc.times_save_called).to eq(1)
+    expect(@doc.computed_property).to eq("1 at holding")
+    expect(@doc.current?).to be true
     doc_persisted = DocWithStateMachine.first
-    doc_persisted.times_save_called.should == 1
-    doc_persisted.computed_property.should == "1 at holding"
+    expect(doc_persisted.times_save_called).to eq(1)
+    expect(doc_persisted.computed_property).to eq("1 at holding")
   end
 
   it "calls compute when transitioning from stale to current" do
     @doc = DocWithStateMachine.new
-    @doc.stale?.should be_true
-    @doc.times_save_called.should == 0
+    expect(@doc.stale?).to be true
+    expect(@doc.times_save_called).to eq(0)
     @doc.recompute!
-    @doc.times_save_called.should == 1
-    @doc.computed_property.should == "1 at stale"
-    @doc.current?.should be_true
+    expect(@doc.times_save_called).to eq(1)
+    expect(@doc.computed_property).to eq("1 at stale")
+    expect(@doc.current?).to be true
     doc_persisted = DocWithStateMachine.first
-    doc_persisted.times_save_called.should == 1
-    doc_persisted.computed_property.should == "1 at stale"
+    expect(doc_persisted.times_save_called).to eq(1)
+    expect(doc_persisted.computed_property).to eq("1 at stale")
   end
 end
 

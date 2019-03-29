@@ -53,23 +53,23 @@ describe "MongoPercolator Node & Operation integration (2)" do
     end
 
     it "starts off zero" do
-      @node.sum.should == 0
+      expect(@node.sum).to eq(0)
     end
 
     it "can be initially computed asynchronously" do
       @node.compute.sum_terms = [SumTerm.new(:value => 0.1), SumTerm.new(:value => 0.2)]
-      @node.compute.save.should be_true
-      @node.save.should be_true
-      MongoPercolator.percolate.operations.should == 1
+      expect(@node.compute.save).to be true
+      expect(@node.save).to be true
+      expect(MongoPercolator.percolate.operations).to eq(1)
       @node.reload
-      @node.sum.round(1).should == 0.3
+      expect(@node.sum.round(1)).to eq(0.3)
     end
 
     it "can find its node when saved" do
-      @node.save.should be_true
-      @node.compute.save.should be_true
+      expect(@node.save).to be true
+      expect(@node.compute.save).to be true
       op = Summation::ComputeSum.find(@node.compute.id)
-      op.node.should_not be_nil
+      expect(op.node).to_not be_nil
     end
 
     context "Two initial terms" do
@@ -80,43 +80,43 @@ describe "MongoPercolator Node & Operation integration (2)" do
       end
 
       it "can compute a sum" do
-        @node.sum.should == 1.0
+        expect(@node.sum).to eq(1.0)
       end
   
       it "is not marked as old if nothing has changed when saved" do
-        @node.compute.stale?.should be_false
-        @node.compute.save.should be_true
+        expect(@node.compute.stale?).to be false
+        expect(@node.compute.save).to be true
         @node.reload
-        @node.compute.stale?.should be_false
+        expect(@node.compute.stale?).to be false
       end
   
       it "is updated when terms are added" do
         new_term = SumTerm.create(:value => 9.9)
         @node.compute.sum_term_ids << new_term.id
-        @node.compute.save.should be_true
+        expect(@node.compute.save).to be true
         MongoPercolator.percolate
         @node.reload
-        @node.sum.should == 10.9
+        expect(@node.sum).to eq(10.9)
       end
   
       it "is updated when a term changes value" do
         terms = @node.compute.sum_terms
         terms[0].value = 3.99
-        terms[0].save.should be_true
+        expect(terms[0].save).to be true
         @node.compute.reload
-        @node.compute.stale?.should be_true
+        expect(@node.compute.stale?).to be true
         MongoPercolator.percolate
         @node.reload
-        @node.sum.should == 4.49
+        expect(@node.sum).to eq(4.49)
       end
 
       it "calls recompute if a value changes" do
         terms = @node.compute.sum_terms
         terms[0].value = 4.99
-        terms[0].save.should be_true
+        expect(terms[0].save).to be true
         MongoPercolator.percolate
         @node.reload
-        @node.sum.should == 5.49
+        expect(@node.sum).to eq(5.49)
       end
 
       it "recomputes when propagating and giving the diff a modified object" do
@@ -129,20 +129,20 @@ describe "MongoPercolator Node & Operation integration (2)" do
         terms[0].propagate
         MongoPercolator.percolate
         @node.reload
-        @node.sum.should == 1.0
+        expect(@node.sum).to eq(1.0)
         terms[0].propagate :against => term_copy
         MongoPercolator.percolate
         @node.reload
-        @node.sum.should == 7.49
+        expect(@node.sum).to eq(7.49)
       end
 
       it "calls perform if a parent is destroyed" do
-        @node.sum.should == 1.0
+        expect(@node.sum).to eq(1.0)
         terms = @node.compute.sum_terms
         terms.first.destroy
         MongoPercolator.percolate
         @node.reload
-        @node.sum.should == 0.5
+        expect(@node.sum).to eq(0.5)
       end
 
       pending "Check what happens when a singleton parent is removed (#{__FILE__})"
@@ -150,8 +150,8 @@ describe "MongoPercolator Node & Operation integration (2)" do
       it "does not call perform if an ignored value changes" do
         terms = @node.compute.sum_terms
         terms[0].ignored = "I changed"
-        terms[0].save.should be_true
-        MongoPercolator.percolate.operations.should == 0
+        expect(terms[0].save).to be true
+        expect(MongoPercolator.percolate.operations).to eq(0)
       end
     end
   end
@@ -162,16 +162,16 @@ describe "MongoPercolator Node & Operation integration (2)" do
     end
 
     it "starts off zero" do
-      @node.sum.should == 0
+      expect(@node.sum).to eq(0)
     end
 
     it "can be initially computed asynchronously" do
       @node.compute.sum_terms = [SumTerm.new(:value => 0.1), SumTerm.new(:value => 0.2)]
-      @node.compute.save.should be_true
-      @node.save.should be_true
-      MongoPercolator.percolate.operations.should == 1
+      expect(@node.compute.save).to be true
+      expect(@node.save).to be true
+      expect(MongoPercolator.percolate.operations).to eq(1)
       @node.reload
-      @node.sum.round(1).should == 0.3
+      expect(@node.sum.round(1)).to eq(0.3)
     end
 
     context "Two initial terms" do
@@ -182,7 +182,7 @@ describe "MongoPercolator Node & Operation integration (2)" do
       end
 
       it "can compute a sum" do
-        @node.sum.should == 1.0
+        expect(@node.sum).to eq(1.0)
       end
     end
   end

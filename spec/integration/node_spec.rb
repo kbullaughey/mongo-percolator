@@ -19,19 +19,19 @@ describe "Node integration" do
   end
 
   it "destroys an op when node is deleted" do
-    NodeIntegrationWithOp.count.should == 1
-    NodeIntegrationWithOp::Op.count.should == 1
+    expect(NodeIntegrationWithOp.count).to eq(1)
+    expect(NodeIntegrationWithOp::Op.count).to eq(1)
     node = NodeIntegrationWithOp.first
     node.destroy
-    NodeIntegrationWithOp::Op.count.should == 0
+    expect(NodeIntegrationWithOp::Op.count).to eq(0)
   end
 
   it "doesn't destory the node when an op is deleted" do
-    NodeIntegrationWithOp.count.should == 1
-    NodeIntegrationWithOp::Op.count.should == 1
+    expect(NodeIntegrationWithOp.count).to eq(1)
+    expect(NodeIntegrationWithOp::Op.count).to eq(1)
     op = NodeIntegrationWithOp::Op.first
     op.destroy
-    NodeIntegrationWithOp.count.should == 1
+    expect(NodeIntegrationWithOp.count).to eq(1)
   end
 end
 

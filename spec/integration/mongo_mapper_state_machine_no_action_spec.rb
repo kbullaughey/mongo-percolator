@@ -38,17 +38,17 @@ describe "Testing behavior of a MongoMapper::Document state_machine w/o action" 
   it "calls compute when transitioning from holding to current" do
     @doc = DocWithStateMachine2.new
     @doc.state = "holding"
-    @doc.times_save_called.should == 0
+    expect(@doc.times_save_called).to eq(0)
     @doc.recompute!
-    @doc.persisted?.should be_false
-    @doc.times_save_called.should == 0
-    @doc.computed_property.should == "0 at holding"
-    @doc.current?.should be_true
-    @doc.save.should be_true
-    @doc.times_save_called.should == 1
+    expect(@doc.persisted?).to be false
+    expect(@doc.times_save_called).to eq(0)
+     expect(@doc.computed_property).to eq("0 at holding")
+    expect(@doc.current?).to be true
+    expect(@doc.save).to be true
+    expect(@doc.times_save_called).to eq(1)
     doc_persisted = DocWithStateMachine2.first
-    doc_persisted.times_save_called.should == 1
-    doc_persisted.computed_property.should == "0 at holding"
+    expect(doc_persisted.times_save_called).to eq(1)
+     expect(doc_persisted.computed_property).to eq("0 at holding")
   end
 end
 

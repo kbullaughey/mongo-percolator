@@ -35,35 +35,35 @@ describe "Polymorphic operation parent integration" do
   it "instantiate the parent of the correct class (A)" do
     node = NodeWithPolymorphicParent.new
     node.create_op :par => @parA
-    node.save.should be_true
+    expect(node.save).to be true
     MongoPercolator.percolate
     node.reload
-    node.common_copy.should == "I'm an A copy"
+     expect(node.common_copy).to eq("I'm an A copy")
     node2 = NodeWithPolymorphicParent.first
-    node2.op.par.should be_kind_of(PolymorphicParentA)
+    expect(node2.op.par).to be_kind_of(PolymorphicParentA)
   end
 
   it "instantiate the parent of the correct class (B)" do
     node = NodeWithPolymorphicParent.new
     node.create_op :par => @parB
-    node.save.should be_true
+    expect(node.save).to be true
     MongoPercolator.percolate
     node.reload
-    node.common_copy.should == "Whachu looking at! copy"
+     expect(node.common_copy).to eq("Whachu looking at! copy")
     node2 = NodeWithPolymorphicParent.first
-    node2.op.par.should be_kind_of(PolymorphicParentB)
+    expect(node2.op.par).to be_kind_of(PolymorphicParentB)
   end
 
   it "can replace the parent and get an object of the other type" do
     node = NodeWithPolymorphicParent.new
     node.create_op :par => @parA
-    node.save.should be_true
+    expect(node.save).to be true
     node2 = NodeWithPolymorphicParent.first
-    node2.op.par.should be_kind_of(PolymorphicParentA)
+    expect(node2.op.par).to be_kind_of(PolymorphicParentA)
     node.op.par = @parB
-    node.op.save.should be_true
+    expect(node.op.save).to be true
     node2 = NodeWithPolymorphicParent.first
-    node2.op.par.should be_kind_of(PolymorphicParentB)
+    expect(node2.op.par).to be_kind_of(PolymorphicParentB)
   end
 
   it "raises an error if polymorphic is used with a plural parent list" do

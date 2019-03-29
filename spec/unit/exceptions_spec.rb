@@ -5,7 +5,7 @@ describe "StandardError enhancements" do
     begin
       raise RuntimeError.new("something's afoot").add(:what => "end of the world")
     rescue RuntimeError => e
-      e.extra.should == {:what => "end of the world"}
+       expect(e.extra).to eq({:what => "end of the world"})
     end
   end
 end

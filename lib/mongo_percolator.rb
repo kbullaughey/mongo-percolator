@@ -2,9 +2,10 @@ require 'active_support/concern'
 require 'active_support/core_ext/string/inflections'
 
 require 'mongo_mapper'
-require 'state_machine'
+require 'state_machines'
 require 'mongo_percolator/version'
 require 'mongo_percolator/guide'
+require 'state_machines/integrations/mongo_mapper'
 
 I18n.config.enforce_available_locales = true
 

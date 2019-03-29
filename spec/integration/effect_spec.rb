@@ -24,10 +24,10 @@ describe "Using an Operation for an asynchronous effect" do
 
   it "can be activated asynchronously" do
     effect = HasEffect.create!(:activate => HasEffect::Activate.new)
-    effect.active.should be_false
+    expect(effect.active).to be false
     MongoPercolator.percolate
     effect.reload
-    effect.active.should be_true
+    expect(effect.active).to be true
   end
 end
 

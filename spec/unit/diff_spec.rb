@@ -34,15 +34,15 @@ describe MongoPercolator::Addressable::Diff do
 
     it "knows that when compared against itself it hasn't changed" do
       diff = MP::Addressable::Diff.new @nest, @nest
-      diff.changed?(%w(queen species)).should be_false
+      expect(diff.changed?(%w(queen species))).to be false
     end
 
     it "knows when it has changed" do
       old = @nest.dup
       @nest.queen = "bob"
       diff = MP::Addressable::Diff.new @nest, old
-      diff.changed?('queen').should be_true
-      diff.changed?('species').should be_false
+      expect(diff.changed?('queen')).to be true
+      expect(diff.changed?('species')).to be false
     end
   end
 
@@ -53,19 +53,19 @@ describe MongoPercolator::Addressable::Diff do
     end
 
     it "was able to initialize the diff" do
-      @diff.should be_kind_of(MP::Addressable::Diff)
+      expect(@diff).to be_kind_of(MP::Addressable::Diff)
     end
 
     it "knows the object is not persisted" do
-      @diff.persisted?.should be_false
+      expect(@diff.persisted?).to be false
     end
 
     it "knows non-existant addresses of an unpersisted object haven't changed" do
-      @diff.changed?('not_a_real_address').should be_false
+      expect(@diff.changed?('not_a_real_address')).to be false
     end
 
     it "knows the object as a whole has changed" do
-      @diff.changed?(%w(queen.weight bee_census)).should be_true
+      expect(@diff.changed?(%w(queen.weight bee_census))).to be true
     end
   end
 
@@ -77,50 +77,50 @@ describe MongoPercolator::Addressable::Diff do
     end
 
     it "knows the object is persisted" do
-      @diff.persisted?.should be_true
+      expect(@diff.persisted?).to be true
     end
 
     it "knows that the local key hasn't changed" do
-      @diff.changed?('bee_census').should be_false
+      expect(@diff.changed?('bee_census')).to be false
     end
 
     it "knows a non-existant property hasn't changed" do
-      @diff.changed?('oogabooga').should be_false
+      expect(@diff.changed?('oogabooga')).to be false
     end
 
     it "knows that existant, but unset assocaitions haven't changed" do
-      @diff.changed?('queen').should be_false
+      expect(@diff.changed?('queen')).to be false
     end
 
     it "can detect a change in the first-level key" do
       @hive.bee_census = 2_000_000
       @diff = MP::Addressable::Diff.new @hive
-      @diff.changed?('bee_census').should be_true
+      expect(@diff.changed?('bee_census')).to be true
     end
 
     it "can detect a newly set embedded association" do
       @hive.queen = Queen.new
       @diff = MP::Addressable::Diff.new @hive
-      @diff.changed?('queen').should be_true
+      expect(@diff.changed?('queen')).to be true
     end
 
     it "sees a nil on a new association as the same as an absent association" do
       @hive.queen = Queen.new
       @diff = MP::Addressable::Diff.new @hive
-      @diff.changed?('queen.weight').should be_false
+      expect(@diff.changed?('queen.weight')).to be false
     end
 
     it "can detect a new value in a newly-added assocaition" do
       @hive.queen = Queen.new :weight => '2g'
       @diff = MP::Addressable::Diff.new @hive
-      @diff.changed?('queen.weight').should be_true
+      expect(@diff.changed?('queen.weight')).to be true
     end
 
     it "knows an inner property hasn't changed if it hasn't" do
       @hive.queen = Queen.new :weight => '2g'
       @hive.save!
       @diff = MP::Addressable::Diff.new @hive
-      @diff.changed?('queen.weight').should be_false
+      expect(@diff.changed?('queen.weight')).to be false
     end
 
     it "knows a value hasn't changed, even if the association was replaced" do
@@ -130,8 +130,8 @@ describe MongoPercolator::Addressable::Diff do
       @hive.queen = Queen.new :weight => '2g'
       new_id = @hive.queen.id
       @diff = MP::Addressable::Diff.new @hive
-      @diff.changed?('queen.weight').should be_false
-      original_id.should_not == new_id
+      expect(@diff.changed?('queen.weight')).to be false
+       expect(original_id).to_not eq(new_id)
     end
   end
 end

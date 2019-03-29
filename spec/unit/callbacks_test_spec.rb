@@ -21,15 +21,15 @@ describe "Testing ActiveModel Callbacks in MongoMapper" do
 
   it "executes the callback when the condition is true" do
     @stupid.suicidal = true
-    @stupid.save.should be_false
-    @stupid.location.should == "ground"
-    TempermentCallbackTest.first.should be_nil
+    expect(@stupid.save).to be false
+     expect(@stupid.location).to eq("ground")
+    expect(TempermentCallbackTest.first).to be_nil
   end
 
   it "doesn't execute the callback when the condition is false" do
-    @stupid.save.should be_true
-    @stupid.location.should == "top floor"
-    TempermentCallbackTest.first.should_not be_nil
+    expect(@stupid.save).to be true
+     expect(@stupid.location).to eq("top floor")
+    expect(TempermentCallbackTest.first).to_not be_nil
   end
 end
 

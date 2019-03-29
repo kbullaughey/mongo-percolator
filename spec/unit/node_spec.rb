@@ -31,41 +31,41 @@ describe "MongoPercolator::Node unit" do
   before(:each) { clean_db }
 
   it "can tell a node is versioned" do
-    NodeUnitTestExports1.versioned?.should be_true
-    NodeUnitTestExports1.new.versioned?.should be_true
-    NodeUnitTestExports1.new.version.should be_a(BSON::ObjectId)
+    expect(NodeUnitTestExports1.versioned?).to be true
+    expect(NodeUnitTestExports1.new.versioned?).to be true
+    expect(NodeUnitTestExports1.new.version).to be_a(BSON::ObjectId)
   end
 
   it "is not versioned even when it has a version property" do
     node = NodeUnitTestNoExports1.new
     node['version'] = 'blah'
-    node.should_not be_versioned
+    expect(node).to_not be_versioned
   end
 
   it "changes versions on save" do
     obj = NodeUnitTestExports1.new
     old_version = obj.version
-    old_version.should be_a(BSON::ObjectId)
-    obj.save.should be_true
-    obj.version.should_not == old_version
-    obj.version.should be_a(BSON::ObjectId)
+    expect(old_version).to be_a(BSON::ObjectId)
+    expect(obj.save).to be true
+    expect(obj.version).to_not eq(old_version)
+    expect(obj.version).to be_a(BSON::ObjectId)
   end
 
   it "sees no exports on a class without them" do
-    NodeUnitTestNoExportsDeclared1.obey_exports?.should be_false
-    NodeUnitTestNoExports1.obey_exports?.should be_true
-    NodeUnitTestExports1.obey_exports?.should be_true
+    expect(NodeUnitTestNoExportsDeclared1.obey_exports?).to be false
+    expect(NodeUnitTestNoExports1.obey_exports?).to be true
+    expect(NodeUnitTestExports1.obey_exports?).to be true
   end
 
   it "sees no exports on a class without them from an instance" do
-    NodeUnitTestNoExportsDeclared1.new.obey_exports?.should be_false
-    NodeUnitTestNoExports1.new.obey_exports?.should be_true
-    NodeUnitTestExports1.new.obey_exports?.should be_true
+    expect(NodeUnitTestNoExportsDeclared1.new.obey_exports?).to be false
+    expect(NodeUnitTestNoExports1.new.obey_exports?).to be true
+    expect(NodeUnitTestExports1.new.obey_exports?).to be true
   end
 
   it "sees an empty list of exports when no_exports is declared" do
-    NodeUnitTestNoExports1.exports.should == []
-    NodeUnitTestNoExports1.obey_exports?.should be_true
+     expect(NodeUnitTestNoExports1.exports).to eq([])
+    expect(NodeUnitTestNoExports1.obey_exports?).to be true
   end
 
   it "raises an error if the export arg is not a string" do
@@ -98,20 +98,20 @@ describe "MongoPercolator::Node unit" do
   end
 
   it "can see the defined exports" do
-    NodeUnitTestExports1.exports.should == ['visible']
+     expect(NodeUnitTestExports1.exports).to eq(['visible'])
   end
 
   it "reduplicates on find" do
     doc = NodeUnitTestExports1.create!
     duplicates = [doc] * 2
-    NodeUnitTestExports1.find(duplicates.collect(&:id)).length.should == 2
+    expect(NodeUnitTestExports1.find(duplicates.collect(&:id)).length).to eq(2)
   end
 
   it "executes before_propagation callback before before_save" do
     doc = NodeUnitWithCallbacks.new
     doc.c = "start"
     doc.save!
-    doc.c.should == "start propagate save"
+     expect(doc.c).to eq("start propagate save")
   end
 end
 

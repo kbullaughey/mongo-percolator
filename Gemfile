@@ -1,6 +1,6 @@
 source 'https://rubygems.org'
 
-gem 'mongo_mapper', :git => 'git@github.com:jnunemaker/mongomapper.git'
+gem 'mongo_mapper', git: 'git@github.com:jnunemaker/mongomapper.git'
 
 group :development, :test do
   gem 'factory_girl'

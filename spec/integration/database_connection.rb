@@ -9,11 +9,11 @@ describe "Test database connection" do
   end
 
   it "is connected" do
-    MongoMapper.connection.connected?.should be_true
+    expect(MongoMapper.connection.connected?).to be true
   end
 
   it "can create an object" do
     o = TestObject.new :stuff => "miscellaneous"
-    o.save!.should be_true
+    expect(o.save!).to be true
   end
 end

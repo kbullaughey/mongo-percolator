@@ -13,11 +13,14 @@ Gem::Specification.new do |gem|
   gem.name          = "mongo_percolator"
   gem.require_paths = ["lib"]
   gem.version       = MongoPercolator::VERSION
+  gem.required_ruby_version = '~> 2.4'
 
   # Dependencies
   gem.add_dependency 'mongo', '~> 1.12.0'
   gem.add_dependency 'bson_ext'
   gem.add_dependency 'mongo_mapper'
-  gem.add_dependency 'activesupport'
-  gem.add_dependency 'state_machine'
+  gem.add_dependency 'state_machines'
+  gem.add_dependency 'state_machines-activemodel'
+  gem.add_dependency 'activemodel', '~> 4.2'
+  gem.add_dependency 'activesupport', '~> 4.2'
 end

@@ -44,12 +44,12 @@ describe "Learning how to use state_machine gem" do
   end
 
   it "initial state is correct" do
-    @pumpkin.in_garden?.should be_true
+    expect(@pumpkin.in_garden?).to be true
   end
 
   it "can transition to picked by picking" do
     @pumpkin.pick!
-    @pumpkin.picked?.should be_true
+    expect(@pumpkin.picked?).to be true
   end
 
   it "can transition to cannon fodder if already rotten" do
@@ -57,20 +57,20 @@ describe "Learning how to use state_machine gem" do
     @pumpkin.purchase!
     @pumpkin.wait!
     @pumpkin.pick!
-    @pumpkin.cannon_fodder?.should be_true
+    expect(@pumpkin.cannon_fodder?).to be true
   end
 
   it "fails when an invalid event is tried" do
     expect {
       @pumpkin.purchase!
-    }.to raise_error(StateMachine::InvalidTransition)
+    }.to raise_error(StateMachines::InvalidTransition)
   end
 
   it "can't transition to carved if not purchases" do
     @pumpkin.pick!
     expect {
       @pumpkin.carve!
-    }.to raise_error(StateMachine::InvalidTransition)
+    }.to raise_error(StateMachines::InvalidTransition)
   end
 
   it "can transition to carved if not purchases when stolen" do
@@ -84,18 +84,18 @@ describe "Learning how to use state_machine gem" do
   it "looks purchased when it was indeed purchased" do
     @pumpkin.pick!
     @pumpkin.purchase!
-    @pumpkin.purchased?.should be_true
+    expect(@pumpkin.purchased?).to be true
   end
 
   it "looks purchased when it's been stolen" do
     @pumpkin.pick!
     @pumpkin.stolen = true
-    @pumpkin.purchased?.should be_true
+    expect(@pumpkin.purchased?).to be true
   end
 
   it "doesn't look purchased if it's not been purchased or stolen" do
     @pumpkin.pick!
-    @pumpkin.purchased?.should be_false
+    expect(@pumpkin.purchased?).to be false
   end
 end
 

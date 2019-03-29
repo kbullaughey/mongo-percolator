@@ -32,34 +32,34 @@ describe "Operations that depend on their node" do
   end
 
   it "can percolate initially" do
-    NodeWithOpWatchingNode::OpWatchingNode.first.stale?.should be_true
+    expect(NodeWithOpWatchingNode::OpWatchingNode.first.stale?).to be true
     n = NodeWithOpWatchingNode.first
-    n.result.should be_nil
-    n.not_depended_on.should == "not a dependency"
-    n.op_depends_on_this.should == "is a dependency"
+    expect(n.result).to be_nil
+     expect(n.not_depended_on).to eq("not a dependency")
+     expect(n.op_depends_on_this).to eq("is a dependency")
     MongoPercolator.percolate
     n.reload
-    n.result.should == "Result: is a dependency"
+     expect(n.result).to eq("Result: is a dependency")
   end
 
   it "is marked as stale when the depended on property changes" do
     MongoPercolator.percolate
     n = NodeWithOpWatchingNode.first
     n.op_depends_on_this = "yes it does"
-    n.save.should be_true
-    NodeWithOpWatchingNode::OpWatchingNode.first.stale?.should be_true
+    expect(n.save).to be true
+    expect(NodeWithOpWatchingNode::OpWatchingNode.first.stale?).to be true
     MongoPercolator.percolate
     n.reload
-    n.result.should == "Result: yes it does"
+     expect(n.result).to eq("Result: yes it does")
   end
 
   it "is not marked as stale when a non-dependency changes" do
     MongoPercolator.percolate
-    NodeWithOpWatchingNode::OpWatchingNode.first.stale?.should be_false
+    expect(NodeWithOpWatchingNode::OpWatchingNode.first.stale?).to be false
     n = NodeWithOpWatchingNode.first
     n.not_depended_on = "nope"
-    n.save.should be_true
-    NodeWithOpWatchingNode::OpWatchingNode.first.stale?.should be_false
+    expect(n.save).to be true
+    expect(NodeWithOpWatchingNode::OpWatchingNode.first.stale?).to be false
   end
 end
 

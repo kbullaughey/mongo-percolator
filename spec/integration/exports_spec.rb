@@ -34,24 +34,24 @@ describe "Node exports integration" do
   end
 
   it "starts off with the initial value" do
-    @child.visible_copy.should == 'public'
+     expect(@child.visible_copy).to eq('public')
   end
 
   it "gets percolated to include visible" do
     @parent.visible = "open"
-    @parent.save.should be_true
+    expect(@parent.save).to be true
     @op.reload
-    @op.stale?.should be_true
+    expect(@op.stale?).to be true
     MongoPercolator.percolate
     @child.reload
-    @child.visible_copy.should == "open"
+     expect(@child.visible_copy).to eq("open")
   end
 
   it "is not percolated when hidden is changed" do
     @parent.hidden = "closed"
-    @parent.save.should be_true
+    expect(@parent.save).to be true
     @op.reload
-    @op.stale?.should be_false
+    expect(@op.stale?).to be false
   end
 end
 

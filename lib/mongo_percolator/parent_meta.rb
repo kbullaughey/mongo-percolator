@@ -46,7 +46,7 @@ module MongoPercolator
       # Make sure all the counts are numeric, and that we have the right nubmer
       # of ids.
       raise TypeError, "Parent count must be a fixnum" if 
-        data['meta'].values.select{|v| !v.is_a?(Fixnum)}.count > 0
+        data['meta'].values.select{|v| !v.is_a?(Integer)}.count > 0
       raise ArgumentError, "id list unexpected length" unless 
         data['ids'].length == data['meta'].values.sum
 

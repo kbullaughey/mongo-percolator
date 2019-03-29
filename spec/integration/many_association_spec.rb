@@ -51,7 +51,7 @@ describe "MongoPercolator many association (integration)" do
   end
 
   it "calls update_many_copy_for on save" do
-    MongoPercolator::Many.should_receive(:update_many_copy_for)
+    expect(MongoPercolator::Many).to receive(:update_many_copy_for)
     TestManyAssociation1.new.save
   end
 
@@ -59,11 +59,11 @@ describe "MongoPercolator many association (integration)" do
     a = TestManyAssociation1.new
     a.save
     many_copy = MongoPercolator::Many::Copy.where(:root_id => a.id).first
-    many_copy.should_not be_nil
-    many_copy.root_type.should == "TestManyAssociation1"
-    many_copy.label.should == "dugong_ids"
-    many_copy.path.should be_nil
-    many_copy.ids.should == []
+    expect(many_copy).to_not be_nil
+     expect(many_copy.root_type).to eq("TestManyAssociation1")
+     expect(many_copy.label).to eq("dugong_ids")
+    expect(many_copy.path).to be_nil
+     expect(many_copy.ids).to eq([])
   end
 
   context "Have some Dugongs" do
@@ -78,9 +78,9 @@ describe "MongoPercolator many association (integration)" do
       a.build_dugong_home :dugongs => [@marvin, @fred]
       a.save
       many_copy = MongoPercolator::Many::Copy.where(:root_id => a.id).first
-      many_copy.path.should == "dugong_home"
-      many_copy.label.should == "dugong_ids"
-      many_copy.node_id.should == a.dugong_home.id
+       expect(many_copy.path).to eq("dugong_home")
+       expect(many_copy.label).to eq("dugong_ids")
+       expect(many_copy.node_id).to eq(a.dugong_home.id)
     end
   
     it "can find the path through a many association" do
@@ -91,11 +91,11 @@ describe "MongoPercolator many association (integration)" do
       ]
       a.save
       many_copies = MongoPercolator::Many::Copy.where(:root_id => a.id).all
-      many_copies.length.should == 2
+      expect(many_copies.length).to eq(2)
       paths = many_copies.collect {|copy| copy.path}
-      paths.should include("dugong_homes[#{a.dugong_homes[0].id}]")
-      paths.should include("dugong_homes[#{a.dugong_homes[1].id}]")
-      many_copies.each {|copy| copy.label.should == "dugong_ids"}
+      expect(paths).to include("dugong_homes[#{a.dugong_homes[0].id}]")
+      expect(paths).to include("dugong_homes[#{a.dugong_homes[1].id}]")
+      many_copies.each {|copy| expect(copy.label).to eq("dugong_ids")}
     end
   
     it "reflects swapping dugongs" do
@@ -107,19 +107,19 @@ describe "MongoPercolator many association (integration)" do
       many_copies = MongoPercolator::Many::Copy.where(:root_id => a.id).all
       barneys_copy = many_copies.select {|copy| copy.node_id == barneys_home.id}.first
       marvins_copy = many_copies.select {|copy| copy.node_id == marvins_home.id}.first
-      barneys_copy.should_not be_nil
-      marvins_copy.should_not be_nil
-      barneys_copy.ids.should == [@barney.id]
-      marvins_copy.ids.should == [@marvin.id]
-      barneys_copy.full_path.should == "dugong_homes[#{barneys_home.id}].dugong_ids"
-      marvins_copy.full_path.should == "dugong_homes[#{marvins_home.id}].dugong_ids"
+      expect(barneys_copy).to_not be_nil
+      expect(marvins_copy).to_not be_nil
+       expect(barneys_copy.ids).to eq([@barney.id])
+       expect(marvins_copy.ids).to eq([@marvin.id])
+       expect(barneys_copy.full_path).to eq("dugong_homes[#{barneys_home.id}].dugong_ids")
+       expect(marvins_copy.full_path).to eq("dugong_homes[#{marvins_home.id}].dugong_ids")
       a.dugong_homes[0].dugongs = [@marvin]
       a.dugong_homes[1].dugongs = [@barney]
       a.save
       barneys_copy.reload
       marvins_copy.reload
-      barneys_copy.ids.should == [@marvin.id]
-      marvins_copy.ids.should == [@barney.id]
+       expect(barneys_copy.ids).to eq([@marvin.id])
+       expect(marvins_copy.ids).to eq([@barney.id])
     end
 
     context "multi-layer example" do
@@ -140,11 +140,11 @@ describe "MongoPercolator many association (integration)" do
         # Check the path to barney
         many_copy = MongoPercolator::Many::Copy.
           where(:node_id => @barneys_family.id).first
-        many_copy.should_not be_nil
-        many_copy.full_path.should == 
+        expect(many_copy).to_not be_nil
+        expect(many_copy.full_path).to eq(
           "dugong_multi_family_homes[#{@barney_and_freds_home.id}]."+
-          "dugong_familys[#{@barneys_family.id}].dugong_ids"
-        many_copy.ids.should == [@barney.id]
+          "dugong_familys[#{@barneys_family.id}].dugong_ids")
+         expect(many_copy.ids).to eq([@barney.id])
   
         # Swap barneys family into marvin's home and set this as the dugong home
         @a.dugong_multi_family_homes[0].dugong_familys = [@freds_family]
@@ -155,12 +155,12 @@ describe "MongoPercolator many association (integration)" do
         # It should use the same many_copy, because the node_id and label hasn't
         # changed.
         many_copy.reload
-        many_copy.full_path.should ==
+        expect(many_copy.full_path).to eq(
           "dugong_multi_family_homes[#{@a.dugong_multi_family_homes[1].id}]."+
-          "dugong_familys[#{@barneys_family.id}].dugong_ids"
-        many_copy.ids.should == [@barney.id]
-        many_copy.root_id.should == @a.id
-        many_copy.root_type.should == @a.class.to_s
+          "dugong_familys[#{@barneys_family.id}].dugong_ids")
+         expect(many_copy.ids).to eq([@barney.id])
+         expect(many_copy.root_id).to eq(@a.id)
+         expect(many_copy.root_type).to eq(@a.class.to_s)
       end
 
       it "removes the id when destroyed" do
@@ -170,13 +170,13 @@ describe "MongoPercolator many association (integration)" do
           select{|h| h.id == @barney_and_freds_home.id}.first
         family = home.dugong_familys.
           select{|f| f.id == @barneys_family.id}.first
-        family.dugong_ids.should == []
+         expect(family.dugong_ids).to eq([])
       end
 
       it "removes the many copy when root is destroyed" do
-        MongoPercolator::Many::Copy.where(:root_id => @a.id).count.should > 0
+        expect(MongoPercolator::Many::Copy.where(:root_id => @a.id).count).to be > 0
         @a.destroy
-        MongoPercolator::Many::Copy.where(:root_id => @a.id).count.should == 0
+        expect(MongoPercolator::Many::Copy.where(:root_id => @a.id).count).to eq(0)
       end
     end
 
@@ -184,10 +184,10 @@ describe "MongoPercolator many association (integration)" do
       a = TestManyAssociation1.new
       a.dugongs << @marvin
       a.dugongs << @fred
-      a.save.should be_true
+      expect(a.save).to be true
       many_copy = MongoPercolator::Many::Copy.where(:root_id => a.id).first
-      many_copy.ids.should include(a.dugongs[0].id)
-      many_copy.ids.should include(a.dugongs[1].id)
+      expect(many_copy.ids).to include(a.dugongs[0].id)
+      expect(many_copy.ids).to include(a.dugongs[1].id)
     end
   
     it "can find the path for a root level many association" do
@@ -195,13 +195,13 @@ describe "MongoPercolator many association (integration)" do
       a.dugongs << @marvin
       a.save
       many_copy = MongoPercolator::Many::Copy.where(:root_id => a.id).first
-      many_copy.ids.should include(a.dugongs.first.id)
+      expect(many_copy.ids).to include(a.dugongs.first.id)
       MongoPercolator::Many.delete_id a.dugongs.first.id
       many_copy.reload
-      many_copy.ids.should_not include(a.dugongs.first.id)
+      expect(many_copy.ids).to_not include(a.dugongs.first.id)
       a.reload
-      a.dugongs.should == []
-      a.dugong_ids.should == []
+       expect(a.dugongs).to eq([])
+       expect(a.dugong_ids).to eq([])
     end
   
     it "deletes the id automatically on destroy" do
@@ -209,15 +209,15 @@ describe "MongoPercolator many association (integration)" do
       doomed_dugong = @marvin
       a.dugongs << doomed_dugong
       a.save
-      Dugong.find(doomed_dugong.id).should_not be_nil
+      expect(Dugong.find(doomed_dugong.id)).to_not be_nil
       many_copy = MongoPercolator::Many::Copy.where(:root_id => a.id).first
-      many_copy.ids.should include(doomed_dugong.id)
-      a.dugong_ids.should include(doomed_dugong.id)
+      expect(many_copy.ids).to include(doomed_dugong.id)
+      expect(a.dugong_ids).to include(doomed_dugong.id)
       doomed_dugong.destroy
       many_copy.reload
       a.reload
-      many_copy.ids.should_not include(doomed_dugong.id)
-      a.dugong_ids.should_not include(doomed_dugong.id)
+      expect(many_copy.ids).to_not include(doomed_dugong.id)
+      expect(a.dugong_ids).to_not include(doomed_dugong.id)
     end
   end
 end

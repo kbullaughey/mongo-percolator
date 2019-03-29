@@ -42,42 +42,42 @@ describe "upserts on nodes" do
   end
 
   it "starts following the target" do
-    @agent.following.should == "Mr. Bond with black hair"
+     expect(@agent.following).to eq("Mr. Bond with black hair")
   end
 
   it "knows it's been created" do
-    @target.create_counter.should == 1
+    expect(@target.create_counter).to eq(1)
   end
 
   it "knows its been saved" do
-    @target.save_counter.should == 1
+    expect(@target.save_counter).to eq(1)
   end
 
   it "percolates when the target is upserted" do
-    MongoPercolator::Operation.first.should_not be_stale
+    expect(MongoPercolator::Operation.first).to_not be_stale
     TargetBeingFollowed.where(:name => "Mr. Bond").upsert(:$set => {:name => "James"})
-    MongoPercolator::Operation.first.should be_stale
+    expect(MongoPercolator::Operation.first).to be_stale
     MongoPercolator.percolate
     @agent.reload
-    @agent.following.should == "James with black hair"
+     expect(@agent.following).to eq("James with black hair")
     @target.reload
-    @target.save_counter.should == 2
+    expect(@target.save_counter).to eq(2)
   end
 
   it "runs the create and save callbacks when upserting a non-existant document" do
     TargetBeingFollowed.collection.remove
     TargetBeingFollowed.where(:name => "Jamesypie").upsert(:$set => {:hair_color => "(bald)"})
     @target = TargetBeingFollowed.first
-    @target.name.should == "Jamesypie"
-    @target.hair_color.should == "(bald)"
-    @target.save_counter.should == 1
-    @target.create_counter.should == 1
+     expect(@target.name).to eq("Jamesypie")
+     expect(@target.hair_color).to eq("(bald)")
+    expect(@target.save_counter).to eq(1)
+    expect(@target.create_counter).to eq(1)
   end
 
   it "doesn't percolate when an unwatched property is upserted" do
     TargetBeingFollowed.where(:name => "Mr. Bond").upsert :$set => 
       {:secret => "I'm scared of blueberry muffins."}
-    MongoPercolator::Operation.first.should_not be_stale
+    expect(MongoPercolator::Operation.first).to_not be_stale
     @target.reload
   end
 
@@ -88,7 +88,7 @@ describe "upserts on nodes" do
     # concurrently created by some other process.
     TargetBeingFollowed.stub(:find_and_modify) do |opts|
       query = opts[:query]
-      query[:name].should == "Mr. Bond"
+       expect(query[:name]).to eq("Mr. Bond")
       doc = {:secret => "I dream of refridgerators", :hair_color => "green"}
       @target = TargetBeingFollowed.create! query.merge(doc)
       # I need to set up the agent to track this document so I can test percolation
@@ -102,8 +102,8 @@ describe "upserts on nodes" do
     MongoPercolator.percolate
 
     @agent.reload
-    @agent.following.should == "Mr. Bond with blond hair"
-    @target.secret.should == "I dream of refridgerators"
+     expect(@agent.following).to eq("Mr. Bond with blond hair")
+     expect(@target.secret).to eq("I dream of refridgerators")
   end
 end
 

@@ -36,95 +36,95 @@ describe "MongoPercolator::Addressable unit" do
   end
 
   it "can regognize an array key" do
-    MP::Addressable.array?('array[123]').should be_true
+    expect(MP::Addressable.array?('array[123]')).to be true
   end
 
   it "knows when a key is not an array (1)" do
-    MP::Addressable.array?('array[]').should be_false
+    expect(MP::Addressable.array?('array[]')).to be false
   end
 
   it "knows when a key is not an array (2)" do
-    MP::Addressable.array?('array[').should be_false
+    expect(MP::Addressable.array?('array[')).to be false
   end
 
   it "knows when a key is not an array (3)" do
-    MP::Addressable.array?('array]').should be_false
+    expect(MP::Addressable.array?('array]')).to be false
   end
 
   it "knows when a key is not an array (3)" do
-    MP::Addressable.array?('[]').should be_false
+    expect(MP::Addressable.array?('[]')).to be false
   end
 
   it "knows when a key is not an array (3)" do
-    MP::Addressable.array?('blah').should be_false
+    expect(MP::Addressable.array?('blah')).to be false
   end
 
   it "can extract the array name" do
-    MP::Addressable.array_name('array[123]').should == "array"
+     expect(MP::Addressable.array_name('array[123]')).to eq("array")
   end
 
   it "can extract a single-character array name" do
-    MP::Addressable.array_name('a[123]').should == "a"
+     expect(MP::Addressable.array_name('a[123]')).to eq("a")
   end
 
   it "can extract the array index" do
-    MP::Addressable.array_index('array[123]').should == '123'
+     expect(MP::Addressable.array_index('array[123]')).to eq('123')
   end
 
   it "can regognize a valid array segment" do
-    MP::Addressable.valid_segment?('array[123]').should be_true
+    expect(MP::Addressable.valid_segment?('array[123]')).to be true
   end
 
   it "can recognize a valid segment that's not an array segment" do
-    MP::Addressable.valid_segment?('not_an_array').should be_true
+    expect(MP::Addressable.valid_segment?('not_an_array')).to be true
   end
 
   it "knows two indices is invalid" do
-    MP::Addressable.valid_segment?('[a][b]').should be_false
+    expect(MP::Addressable.valid_segment?('[a][b]')).to be false
   end
 
   it "knows two empty indices is invalid" do
-    MP::Addressable.valid_segment?('[][]').should be_false
+    expect(MP::Addressable.valid_segment?('[][]')).to be false
   end
 
   it "knows an index missing an open is invalid" do
-    MP::Addressable.valid_segment?('array]').should be_false
+    expect(MP::Addressable.valid_segment?('array]')).to be false
   end
 
   it "knows an index missing a close is invalid" do
-    MP::Addressable.valid_segment?('array[').should be_false
+    expect(MP::Addressable.valid_segment?('array[')).to be false
   end
 
   it "knows an empty string is invalid" do
-    MP::Addressable.valid_segment?('').should be_false
+    expect(MP::Addressable.valid_segment?('')).to be false
   end
 
   it "knows an array with no label is invalid" do
-    MP::Addressable.valid_segment?('[123]').should be_false
+    expect(MP::Addressable.valid_segment?('[123]')).to be false
   end
 
   it "knows funny characters in the index is okay" do
-    MP::Addressable.valid_segment?('array[@$@%"]').should be_true
+    expect(MP::Addressable.valid_segment?('array[@$@%"]')).to be true
   end
 
   it "knows an invalid character is invalid" do
-    MP::Addressable.valid_segment?('@').should be_false
+    expect(MP::Addressable.valid_segment?('@')).to be false
   end
 
   it "knows an invalid character in the array name is invalid" do
-    MP::Addressable.valid_segment?('arr@y[123]').should be_false
+    expect(MP::Addressable.valid_segment?('arr@y[123]')).to be false
   end
 
   it "can recognize a splat" do
-    MP::Addressable.splat?('arry[]').should be_true
+    expect(MP::Addressable.splat?('arry[]')).to be true
   end
 
   it "sees a splat as a valid segment" do
-    MP::Addressable.valid_segment?('arry[]').should be_true
+    expect(MP::Addressable.valid_segment?('arry[]')).to be true
   end
 
   it "can extract the splat label" do
-    MP::Addressable.splat_label('arry[]').should == "arry"
+     expect(MP::Addressable.splat_label('arry[]')).to eq("arry")
   end
 
   describe "fetching" do
@@ -141,51 +141,50 @@ describe "MongoPercolator::Addressable unit" do
     end
   
     it "can address the first layer as single" do
-      Layer1.new.fetch('bing', :single => true).should be_kind_of(Layer1::Layer2)
+      expect(Layer1.new.fetch('bing', :single => true)).to be_kind_of(Layer1::Layer2)
     end
   
     it "can address the first layer" do
       match = Layer1.new.fetch('bing')
-      match.length.should == 1
-      match.first.should be_kind_of(Layer1::Layer2)
+      expect(match.length).to eq(1)
+      expect(match.first).to be_kind_of(Layer1::Layer2)
     end
   
     it "can address a multi-layer address" do
-      Layer1.new.fetch('bing.bam.boom', :single => true).should == "Ouch!"
-      Layer1.new.fetch('bing.bam.boom').should == ["Ouch!"]
+       expect(Layer1.new.fetch('bing.bam.boom', :single => true)).to eq("Ouch!")
+       expect(Layer1.new.fetch('bing.bam.boom')).to eq(["Ouch!"])
     end
 
     it "can fetch from an array (single)" do
       res = Layer1.new.fetch('powpowpow[1]', :single => true)
-      res.should_not be_nil
-      res[:sound].should == 'eeek'
+      expect(res).to_not be_nil
+       expect(res[:sound]).to eq('eeek')
     end
 
     it "can fetch from an array" do
       res = Layer1.new.fetch('powpowpow[1]')
-      res.length.should == 1
-      res.first[:sound].should == 'eeek'
+      expect(res.length).to eq(1)
+       expect(res.first[:sound]).to eq('eeek')
     end
 
     it "can fetch into an object within an array item" do
-      Layer1.new.fetch('kazam![b].bam.boom', :single => true).should == "Ouch!"
+       expect(Layer1.new.fetch('kazam![b].bam.boom', :single => true)).to eq("Ouch!")
     end
 
     it "can fetch multiple items from an array (1)" do
-      Layer1.new.fetch('kazam![].bam.boom').should == ["Ouch!"] * 2
+       expect(Layer1.new.fetch('kazam![].bam.boom')).to eq(["Ouch!"] * 2)
     end
 
     it "can fetch multiple items from an array (2)" do
-      Layer1.new.fetch('powpowpow[].sound').should == ['eeek', 'aaaah']
+       expect(Layer1.new.fetch('powpowpow[].sound')).to eq(['eeek', 'aaaah'])
     end
 
     it "can fetch into an object within an array item" do
-      Layer1.new.fetch('kazam![b].bam.boom').should == ["Ouch!"]
+       expect(Layer1.new.fetch('kazam![b].bam.boom')).to eq(["Ouch!"])
     end
 
     it "can fetch using the class method" do
-      MP::Addressable.fetch('bing.bam.boom', :target => Layer1.new, 
-        :single => true).should == "Ouch!"
+      expect(MP::Addressable.fetch('bing.bam.boom', :target => Layer1.new, single: true)).to eq("Ouch!")
     end
   
     it "raises an error when fetch is not given a target" do
@@ -195,15 +194,13 @@ describe "MongoPercolator::Addressable unit" do
     end
   
     it "can address a hash and method chain mixture (single)" do
-      Layer1.new.fetch('bada.bing.bada.bam.bada.boom', :single => true).
-        should == 'Ouch!!!'
-      Layer1.new.fetch('bada.bing.bada.bam.bada.boom.length', :single => true).
-        should == 7
+      expect(Layer1.new.fetch('bada.bing.bada.bam.bada.boom', :single => true)).to eq('Ouch!!!')
+      expect(Layer1.new.fetch('bada.bing.bada.bam.bada.boom.length', :single => true)).to eq(7)
     end
   
     it "can address a hash and method chain mixture" do
-      Layer1.new.fetch('bada.bing.bada.bam.bada.boom').should == ['Ouch!!!']
-      Layer1.new.fetch('bada.bing.bada.bam.bada.boom.length').should == [7]
+       expect(Layer1.new.fetch('bada.bing.bada.bam.bada.boom')).to eq(['Ouch!!!'])
+       expect(Layer1.new.fetch('bada.bing.bada.bam.bada.boom.length')).to eq([7])
     end
   
     it "fails when the hash key doesn't exist" do
@@ -219,27 +216,24 @@ describe "MongoPercolator::Addressable unit" do
     end
   
     it "can address an existing key that evaluates to nil" do
-      Layer1.new.fetch('bada.nothing', :raise_on_invalid => true, 
-        :single => true).should be_nil
+      expect(Layer1.new.fetch('bada.nothing', :raise_on_invalid => true, single: true)).to be_nil
     end
 
     it "can address an existing key that evaluates to nil" do
-      Layer1.new.fetch('bada.nothing', :raise_on_invalid => true).
-        should == [nil]
+      expect(Layer1.new.fetch('bada.nothing', :raise_on_invalid => true)).to eq([nil])
     end
   end
 
   describe "find_in_array" do
     it "can use id symbols in a hash" do
       target = [{:id => :okay}, {:id => :fail}]
-      MP::Addressable.find_in_array("okay", target).should == {:id => :okay}
+      expect(MP::Addressable.find_in_array("okay", target)).to eq({:id => :okay})
     end
 
     it "can use ObjectIds in a hash" do
       target = [{:id => BSON::ObjectId('5064cfe1a0b7f96cb9000008')}, 
         {:id => BSON::ObjectId('5064cfe1a0b7f96cb9000009')}]
-      MP::Addressable.find_in_array("5064cfe1a0b7f96cb9000008", target).should == 
-        {:id => BSON::ObjectId('5064cfe1a0b7f96cb9000008')}
+      expect(MP::Addressable.find_in_array("5064cfe1a0b7f96cb9000008", target)).to eq({:id => BSON::ObjectId('5064cfe1a0b7f96cb9000008')})
     end
   end
 
@@ -250,17 +244,17 @@ describe "MongoPercolator::Addressable unit" do
 
     it "can use match_head to filter addresses" do
       matching = @addrs.select &MP::Addressable.match_head('fish')
-      matching.should == ['fish.red_snapper', 'fish.bass']
+      expect(matching).to eq(['fish.red_snapper', 'fish.bass'])
     end
   
     it "can use match_head as an instance function" do
       matching = @addrs.select &Layer1.new.match_head('fish')
-      matching.should == ['fish.red_snapper', 'fish.bass']
+      expect(matching).to eq(['fish.red_snapper', 'fish.bass'])
     end
 
     it "can take a symbol" do
       matching = @addrs.select &Layer1.new.match_head(:fish)
-      matching.should == ['fish.red_snapper', 'fish.bass']
+      expect(matching).to eq(['fish.red_snapper', 'fish.bass'])
     end
 
     it "raises an error if not a string or symbol" do
@@ -271,23 +265,23 @@ describe "MongoPercolator::Addressable unit" do
   end
 
   it "can get the head of an address using an instance" do
-    Layer1.new.head("fish.bass").should == "fish"
+    expect(Layer1.new.head("fish.bass")).to eq("fish")
   end
 
   it "can get the head of an address using the module" do
-    MP::Addressable.head("fish.bass").should == "fish"
+    expect(MP::Addressable.head("fish.bass")).to eq("fish")
   end
 
   it "can get the tail of an address using an instance" do
-    Layer1.new.tail("fish.bass.striped").should == "bass.striped"
+    expect(Layer1.new.tail("fish.bass.striped")).to eq("bass.striped")
   end
 
   it "can get the tail of an address using the module" do
-    MP::Addressable.tail("fish.bass.striped").should == "bass.striped"
+    expect(MP::Addressable.tail("fish.bass.striped")).to eq("bass.striped")
   end
 
   it "knows a one-segment address has no tail" do
-    MP::Addressable.tail("fish").should be_nil
+    expect(MP::Addressable.tail("fish")).to be_nil
   end
 end
 
